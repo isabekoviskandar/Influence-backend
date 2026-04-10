@@ -4,13 +4,23 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-// #[Fillable(['name', 'email', 'password'])]
+/**
+ * @property int $id
+ * @property string|null $username
+ * @property string|null $email
+ * @property string|null $telegram_chat_id
+ * @property string|null $telegram_username
+ * @property string|null $plan
+ * @property-read string $name
+ * @property-read Collection<int, Channel> $channels
+ */
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -43,4 +53,17 @@ class User extends Authenticatable
             'avatar',
             'plan',
         ];
+
+    public function channels(): HasMany
+    {
+        return $this->hasMany(Channel::class);
+    }
+
+    public function getNameAttribute(): string
+    {
+        return $this->username
+            ?? $this->telegram_username
+            ?? $this->email
+            ?? 'User';
+    }
 }
