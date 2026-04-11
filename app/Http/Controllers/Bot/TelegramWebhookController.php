@@ -23,7 +23,7 @@ class TelegramWebhookController extends Controller
     public function handle(string $secret, Request $request): Response
     {
         if ($secret !== config('services.telegram.webhook_secret')) {
-            Log::channel('telegram')->warning('Invalid webhook secret provided', ['secret' => $secret]);
+            Log::channel('telegram')->warning('Invalid webhook secret provided');
             abort(403, 'Invalid secret');
         }
 

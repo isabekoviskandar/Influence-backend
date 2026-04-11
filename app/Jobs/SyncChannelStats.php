@@ -41,7 +41,7 @@ class SyncChannelStats implements ShouldQueue
                 'chat_id' => $chatId,
             ]);
 
-            // 2. Recent posts — fetch last 30 messages
+            // 2. Recent posts — fetch last 150 messages for robust averages
             $posts = $this->fetchRecentPosts($telegram, $chatId);
 
             // 3. Calculate metrics
@@ -125,9 +125,11 @@ class SyncChannelStats implements ShouldQueue
         // For MVP: use locally cached posts from the channel_posts table.
         // These get populated by the channel_post webhook update type.
 
+        // Increase limit to 150 to get a broader sample for calculation.
+        // It relies on posts already captured via webhook or history sync.
         $posts = Post::where('channel_id', $this->channel->id)
             ->orderBy('created_at', 'desc')
-            ->limit(30)
+            ->limit(150)
             ->get();
 
         if ($posts->isEmpty()) {
