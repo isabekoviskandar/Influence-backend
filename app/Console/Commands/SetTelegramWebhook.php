@@ -20,7 +20,7 @@ class SetTelegramWebhook extends Command
 
         $result = $telegram->setWebhook([
             'url' => $url,
-            'allowed_updates' => ['message', 'my_chat_member', 'channel_post', 'edited_channel_post'],
+            'allowed_updates' => ['message', 'my_chat_member', 'channel_post', 'edited_channel_post', 'message_reaction', 'message_reaction_count'],
             'drop_pending_updates' => true,
         ]);
 

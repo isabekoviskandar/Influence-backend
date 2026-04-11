@@ -2,7 +2,7 @@
 
 namespace App\Services\Bot;
 
-use App\Jobs\SyncChannelStats;
+use App\Jobs\FetchHistoricalPosts;
 use App\Models\Channel;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
@@ -77,8 +77,8 @@ class ChannelMemberService
             'user_id' => $user?->id,
         ]);
 
-        // Immediately kick off a stats sync
-        SyncChannelStats::dispatch($channel)->onQueue('sync');
+        // Immediately kick off history fetch, which will then trigger stats sync
+        FetchHistoricalPosts::dispatch($channel)->onQueue('sync');
 
         // Notify the owner if we know who they are
         if ($user) {

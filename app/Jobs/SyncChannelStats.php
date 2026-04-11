@@ -191,8 +191,8 @@ class SyncChannelStats implements ShouldQueue
         $growthScore = min(100, max(0, ($growthPercent / 10) * 100));
 
         $score = ($reachScore * 0.40)
-               + ($engagementScore * 0.40)
-               + ($growthScore * 0.20);
+            + ($engagementScore * 0.40)
+            + ($growthScore * 0.20);
 
         return (int) round($score);
     }
