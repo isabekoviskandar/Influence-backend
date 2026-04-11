@@ -4,6 +4,7 @@ namespace App\Services\Bot;
 
 use App\Models\Channel;
 use App\Models\Post;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class ChannelPostService
@@ -19,7 +20,10 @@ class ChannelPostService
         $views = $post['views'] ?? 0;
         $date = $post['date'] ?? now()->timestamp;
 
-        $channel = Channel::where('chat_id', (string) $chatId)->first();
+        // Cache the channel lookup for 1 hour to avoid frequent DB hits
+        $channel = Cache::remember("channel_by_chat_id:{$chatId}", 3600, function () use ($chatId) {
+            return Channel::where('chat_id', (string) $chatId)->first();
+        });
 
         if (! $channel) {
             // Bot is in a channel we don't have on record yet — ignore

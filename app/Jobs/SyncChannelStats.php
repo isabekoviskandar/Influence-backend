@@ -128,10 +128,15 @@ class SyncChannelStats implements ShouldQueue
         $posts = Post::where('channel_id', $this->channel->id)
             ->orderBy('created_at', 'desc')
             ->limit(30)
-            ->get()
-            ->toArray();
+            ->get();
 
-        return $posts;
+        if ($posts->isEmpty()) {
+            Log::channel('telegram')->info('Initial sync: No posts found in database yet. Waiting for channel_post updates.', [
+                'channel_id' => $this->channel->id,
+            ]);
+        }
+
+        return $posts->toArray();
     }
 
     private function calcAverageViews(array $posts): int
