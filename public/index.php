@@ -10,6 +10,10 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
     require $maintenance;
 }
 
+// Force MadelineProto API Credentials for background processes
+putenv('MADELINE_API_ID=21209321');
+putenv('MADELINE_API_HASH=1a1657589ce21b5eddbdb01e7bb393fe');
+
 // Register the Composer autoloader...
 require __DIR__.'/../vendor/autoload.php';
 
