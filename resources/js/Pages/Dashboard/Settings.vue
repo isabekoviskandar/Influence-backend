@@ -13,13 +13,54 @@ const user = computed(() => page.props.auth.user);
 
 const form = useForm({
     username: user.value?.username ?? '',
+    email:    user.value?.email    ?? '',
     phone:    user.value?.phone    ?? '',
     bio:      user.value?.bio      ?? '',
+    avatar:   null,
+    password: '',
+    password_confirmation: '',
 });
 
-function saveProfile() {
-    form.patch('/dashboard/settings');
+const avatarPreview = ref(user.value?.avatar ? `/storage/${user.value.avatar}` : null);
+
+function onAvatarChange(e) {
+    const file = e.target.files[0];
+    if (file) {
+        form.avatar = file;
+        const reader = new FileReader();
+        reader.onload = (e) => (avatarPreview.value = e.target.result);
+        reader.readAsDataURL(file);
+    }
 }
+
+function saveProfile() {
+    form.post('/dashboard/settings', {
+        forceFormData: true,
+        onSuccess: () => {
+            form.password = '';
+            form.password_confirmation = '';
+        },
+        queryParams: {
+            _method: 'PATCH'
+        }
+    });
+}
+
+// Alternatively, Inertia has a method to explicitly spoof PATCH
+function saveProfileV2() {
+    form.transform((data) => ({
+        ...data,
+        _method: 'PATCH',
+    })).post('/dashboard/settings', {
+        forceFormData: true,
+        onSuccess: () => {
+            form.password = '';
+            form.password_confirmation = '';
+        }
+    });
+}
+// Using the transformation approach
+const submit = saveProfileV2;
 
 // Telegram linking
 const telegramLink = ref(props.telegram_link);
@@ -60,44 +101,69 @@ function copyLink() {
             <div class="bg-[#16161f] border border-white/5 rounded-2xl p-6 mb-6">
                 <h2 class="text-base font-semibold text-white mb-5">Profile</h2>
 
-                <!-- Avatar -->
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xl font-bold text-white">
-                        {{ user?.name?.[0]?.toUpperCase() ?? 'U' }}
+                <form @submit.prevent="submit" class="space-y-6">
+                    <!-- Avatar -->
+                    <div class="flex items-center gap-5 mb-8">
+                        <div class="relative group">
+                            <img v-if="avatarPreview" :src="avatarPreview" class="w-20 h-20 rounded-2xl object-cover border border-white/10" />
+                            <div v-else class="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white border border-white/10">
+                                {{ user?.name?.[0]?.toUpperCase() ?? 'U' }}
+                            </div>
+                            
+                            <label class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl cursor-pointer">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                                <input type="file" class="hidden" @change="onAvatarChange" accept="image/*" />
+                            </label>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white text-lg">{{ user?.name }}</p>
+                            <span class="text-xs px-2 py-0.5 rounded-full mt-1 inline-block"
+                                  :class="user?.plan === 'pro' ? 'bg-amber-500/20 text-amber-400' : 'bg-indigo-500/20 text-indigo-400'">
+                                {{ user?.plan === 'pro' ? '⭐ Pro Account' : '🆓 Free Plan' }}
+                            </span>
+                            <p v-if="form.errors.avatar" class="mt-1 text-xs text-red-400">{{ form.errors.avatar }}</p>
+                        </div>
                     </div>
-                    <div>
-                        <p class="font-semibold text-white">{{ user?.name }}</p>
-                        <p class="text-sm text-gray-500">{{ user?.email }}</p>
-                        <span class="text-xs px-2 py-0.5 rounded-full mt-1 inline-block"
-                              :class="user?.plan === 'pro' ? 'bg-amber-500/20 text-amber-400' : 'bg-indigo-500/20 text-indigo-400'">
-                            {{ user?.plan === 'pro' ? '⭐ Pro' : '🆓 Free Plan' }}
-                        </span>
-                    </div>
-                </div>
 
-                <form @submit.prevent="saveProfile" class="space-y-4">
-                    <!-- Username -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
-                        <input
-                            v-model="form.username"
-                            type="text"
-                            placeholder="yourusername"
-                            class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50"
-                        />
-                        <p v-if="form.errors.username" class="mt-1 text-xs text-red-400">{{ form.errors.username }}</p>
-                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Username -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
+                            <input
+                                v-model="form.username"
+                                type="text"
+                                placeholder="yourusername"
+                                class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50"
+                            />
+                            <p v-if="form.errors.username" class="mt-1 text-xs text-red-400">{{ form.errors.username }}</p>
+                        </div>
 
-                    <!-- Phone -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1.5">Phone</label>
-                        <input
-                            v-model="form.phone"
-                            type="tel"
-                            placeholder="+998901234567"
-                            class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50"
-                        />
-                        <p v-if="form.errors.phone" class="mt-1 text-xs text-red-400">{{ form.errors.phone }}</p>
+                        <!-- Email -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1.5">Email</label>
+                            <input
+                                v-model="form.email"
+                                type="email"
+                                placeholder="you@example.com"
+                                class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50"
+                            />
+                            <p v-if="form.errors.email" class="mt-1 text-xs text-red-400">{{ form.errors.email }}</p>
+                        </div>
+
+                        <!-- Phone -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1.5">Phone</label>
+                            <input
+                                v-model="form.phone"
+                                type="tel"
+                                placeholder="+998901234567"
+                                class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50"
+                            />
+                            <p v-if="form.errors.phone" class="mt-1 text-xs text-red-400">{{ form.errors.phone }}</p>
+                        </div>
                     </div>
 
                     <!-- Bio -->
@@ -109,15 +175,43 @@ function copyLink() {
                             placeholder="Tell us a bit about yourself…"
                             class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 resize-none"
                         />
+                        <p v-if="form.errors.bio" class="mt-1 text-xs text-red-400">{{ form.errors.bio }}</p>
                     </div>
 
-                    <button
-                        type="submit"
-                        :disabled="form.processing"
-                        class="px-5 py-2.5 rounded-lg text-sm font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-60"
-                    >
-                        {{ form.processing ? 'Saving…' : 'Save changes' }}
-                    </button>
+                    <div class="pt-6 border-t border-white/5">
+                        <h3 class="text-sm font-semibold text-white mb-4">Security</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-1.5">New Password</label>
+                                <input
+                                    v-model="form.password"
+                                    type="password"
+                                    placeholder="••••••••"
+                                    class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50"
+                                />
+                                <p v-if="form.errors.password" class="mt-1 text-xs text-red-400">{{ form.errors.password }}</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-1.5">Confirm Password</label>
+                                <input
+                                    v-model="form.password_confirmation"
+                                    type="password"
+                                    placeholder="••••••••"
+                                    class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex justify-end">
+                        <button
+                            type="submit"
+                            :disabled="form.processing"
+                            class="px-8 py-3 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-xl shadow-indigo-600/20 disabled:opacity-60"
+                        >
+                            {{ form.processing ? 'Syncing Profile…' : 'Save Changes' }}
+                        </button>
+                    </div>
                 </form>
             </div>
 
