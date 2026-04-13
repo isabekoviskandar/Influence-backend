@@ -9,11 +9,13 @@
         "php": "^8.3",
         "danog/madelineproto": "^8.6",
         "filament/filament": "^5.5",
+        "inertiajs/inertia-laravel": "^3.0",
         "irazasyed/telegram-bot-sdk": "^3.16",
         "laravel/framework": "^13.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
-        "predis/predis": "^3.4"
+        "predis/predis": "^3.4",
+        "tightenco/ziggy": "^2.6"
     },
     "require-dev": {
         "captainhook/captainhook": "^5.29",

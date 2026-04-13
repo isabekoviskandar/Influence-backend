@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Bot\BotCommandHandler;
 use App\Services\Bot\ChannelMemberService;
 use App\Services\Bot\ChannelPostService;
+use App\Services\Bot\OnboardingService;
 use App\Services\Bot\StartCommandService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -18,6 +19,7 @@ class TelegramWebhookController extends Controller
         private readonly ChannelMemberService $channelMember,
         private readonly ChannelPostService $channelPost,
         private readonly BotCommandHandler $commandHandler,
+        private readonly OnboardingService $onboarding,
     ) {}
 
     public function handle(string $secret, Request $request): Response
@@ -65,13 +67,22 @@ class TelegramWebhookController extends Controller
             return;
         }
 
-        // Regular message to the bot (private chat)
+        // Regular private message to the bot
         if (isset($update['message'])) {
             $message = $update['message'];
+            $chatId = $message['chat']['id'];
             $text = $message['text'] ?? '';
 
+            // /start always resets onboarding or links account
             if (str_starts_with($text, '/start')) {
                 $this->startCommand->handle($message);
+
+                return;
+            }
+
+            // If user is mid-onboarding, route ALL messages (including contacts) to OnboardingService
+            if ($this->onboarding->hasActiveSession($chatId)) {
+                $this->onboarding->handleStep($chatId, $message);
 
                 return;
             }
