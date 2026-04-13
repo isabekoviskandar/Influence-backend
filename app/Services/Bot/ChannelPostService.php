@@ -6,7 +6,6 @@ use App\Jobs\DownloadPostMedia;
 use App\Models\Channel;
 use App\Models\Post;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class ChannelPostService
@@ -23,10 +22,9 @@ class ChannelPostService
         $chatId = $post['chat']['id'];
         $messageId = $post['message_id'];
 
-        // Cache the channel lookup for 1 hour to avoid frequent DB hits
-        $channel = Cache::remember("channel_by_chat_id:{$chatId}", 3600, function () use ($chatId) {
-            return Channel::where('chat_id', (string) $chatId)->first();
-        });
+        // Fetch the channel directly to avoid Eloquent serialization caching issues.
+        // chat_id should be indexed on the channels table for fast lookups.
+        $channel = Channel::where('chat_id', (string) $chatId)->first();
 
         if (! $channel) {
             return;

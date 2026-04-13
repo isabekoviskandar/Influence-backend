@@ -35,9 +35,22 @@ class ChannelController extends Controller
                 ];
             });
 
-        $statsHistory = $channel->stats()
-            ->latest('recorded_at')
-            ->limit(30)
+        $period = $request->query('period', '30d');
+
+        $query = $channel->stats()->latest('recorded_at');
+
+        if ($period === '7d') {
+            $query->where('recorded_at', '>=', now()->subDays(7));
+            $limit = 7 * 24; // Arbitrary safe limit if syncing hourly
+        } elseif ($period === '30d') {
+            $query->where('recorded_at', '>=', now()->subDays(30));
+            $limit = 30 * 24;
+        } else {
+            // all
+            $limit = 1000;
+        }
+
+        $statsHistory = $query->limit($limit)
             ->get()
             ->map(function ($s) {
                 /** @var ChannelStat $s */
@@ -64,6 +77,7 @@ class ChannelController extends Controller
             ],
             'posts' => $posts,
             'stats_history' => $statsHistory,
+            'period' => $period,
         ]);
     }
 }

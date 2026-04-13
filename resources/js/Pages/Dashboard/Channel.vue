@@ -1,12 +1,13 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
 
 const props = defineProps({
     channel:       Object,
     posts:         Array,
     stats_history: Array,
+    period:        String,
 });
 
 function formatNumber(n) {
@@ -49,6 +50,10 @@ const labels = computed(() =>
 
 // Active chart tab
 const activeTab = ref('views');
+
+function setPeriod(p) {
+    router.get(route('dashboard.channels.show', props.channel.id), { period: p }, { preserveScroll: true });
+}
 </script>
 
 <template>
@@ -108,18 +113,36 @@ const activeTab = ref('views');
         <div class="bg-[#16161f] border border-white/5 rounded-2xl p-6 mb-6">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-base font-semibold text-white">Analytics Trend</h2>
-                <div class="flex gap-1 bg-black/30 rounded-lg p-1">
-                    <button
-                        v-for="tab in ['views', 'members']"
-                        :key="tab"
-                        @click="activeTab = tab"
-                        class="px-3 py-1 rounded-md text-xs font-medium transition-all"
-                        :class="activeTab === tab
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-gray-500 hover:text-white'"
-                    >
-                        {{ tab === 'views' ? 'Avg Views' : 'Members' }}
-                    </button>
+                <div class="flex items-center gap-4">
+                    <!-- Period Filter -->
+                    <div class="flex gap-1 bg-black/30 rounded-lg p-1">
+                        <button
+                            v-for="p in [{ id: '7d', label: '7 Days' }, { id: '30d', label: '30 Days' }, { id: 'all', label: 'All Time' }]"
+                            :key="p.id"
+                            @click="setPeriod(p.id)"
+                            class="px-3 py-1 rounded-md text-xs font-medium transition-all"
+                            :class="period === p.id
+                                ? 'bg-white/10 text-white'
+                                : 'text-gray-500 hover:text-white'"
+                        >
+                            {{ p.label }}
+                        </button>
+                    </div>
+
+                    <!-- Metric Tab -->
+                    <div class="flex gap-1 bg-black/30 rounded-lg p-1">
+                        <button
+                            v-for="tab in ['views', 'members']"
+                            :key="tab"
+                            @click="activeTab = tab"
+                            class="px-3 py-1 rounded-md text-xs font-medium transition-all"
+                            :class="activeTab === tab
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-gray-500 hover:text-white'"
+                        >
+                            {{ tab === 'views' ? 'Avg Views' : 'Members' }}
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -209,16 +232,27 @@ const activeTab = ref('views');
                             <p class="text-xs text-gray-600 mt-1">{{ post.posted_at_ago }}</p>
                         </div>
                         <!-- Metrics -->
-                        <div class="flex items-center gap-4 shrink-0 text-xs text-gray-500">
-                            <span class="flex items-center gap-1">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </svg>
-                                {{ formatNumber(post.views) }}
-                            </span>
-                            <span v-if="post.forwards">↗ {{ post.forwards }}</span>
-                            <span v-if="post.reactions">❤️ {{ post.reactions }}</span>
+                        <div class="flex flex-col items-end gap-2 shrink-0">
+                            <!-- Reaction UI -->
+                            <div class="bg-red-500/10 border border-red-500/20 text-red-400 px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1.5 min-w-[70px] justify-center">
+                                <span>❤️</span> {{ post.reactions || 0 }}
+                            </div>
+                            
+                            <div class="flex items-center gap-3 text-xs text-gray-500">
+                                <span class="flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                    {{ formatNumber(post.views) }}
+                                </span>
+                                <span v-if="post.forwards" class="flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                    </svg>
+                                    {{ post.forwards }}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>

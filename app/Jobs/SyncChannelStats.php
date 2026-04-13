@@ -11,6 +11,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Api;
 use Telegram\Bot\Exceptions\TelegramSDKException;
@@ -59,41 +62,95 @@ class SyncChannelStats implements ShouldQueue
                     $pwrChat = $MadelineProto->getPwrChat($peer);
                     $memberCount = $pwrChat['participants_count'] ?? 0;
 
-                    // Refresh Post Views (last 50)
-                    $cachedPosts = Post::where('channel_id', $this->channel->id)
-                        ->orderBy('posted_at', 'desc')
-                        ->limit(50)
-                        ->get();
+                    // Workaround for BOT_METHOD_INVALID: Bots cannot use messages.getHistory.
+                    // Instead, we find the highest known message ID, or deduce it, and query those specific IDs backwards.
+                    $latestPost = Post::where('channel_id', $this->channel->id)->orderBy('telegram_post_id', 'desc')->first();
+                    $latestId = $latestPost ? (int) $latestPost->telegram_post_id : null;
 
-                    if ($cachedPosts->isNotEmpty()) {
-                        $msgIds = $cachedPosts->pluck('telegram_post_id')->map(fn ($id) => (int) $id)->toArray();
+                    if (! $latestId) {
+                        // If we have no posts at all, send a temporary message to get the current message_id
+                        try {
+                            $tempMsg = Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
+                                'chat_id' => $chatId,
+                                'text' => '.',
+                                'disable_notification' => true,
+                            ])->json();
+
+                            if (isset($tempMsg['result']['message_id'])) {
+                                $latestId = $tempMsg['result']['message_id'];
+                                // Delete the temp message
+                                Http::post("https://api.telegram.org/bot{$botToken}/deleteMessage", [
+                                    'chat_id' => $chatId,
+                                    'message_id' => $latestId,
+                                ]);
+                            }
+                        } catch (\Exception $e) {
+                            // Ignored
+                        }
+                    }
+
+                    if ($latestId) {
+                        // Generate array of the last 50 message IDs
+                        $startId = max(1, $latestId - 49);
+                        $msgIds = range($startId, $latestId);
+
                         $messagesResult = $MadelineProto->channels->getMessages([
                             'channel' => $chatId,
                             'id' => $msgIds,
                         ]);
 
-                        foreach ($messagesResult['messages'] as $msg) {
-                            if (($msg['_'] ?? '') !== 'message') {
-                                continue;
-                            }
-
-                            $views = $msg['views'] ?? 0;
-                            $forwards = $msg['forwards'] ?? 0;
-                            $reactionsCount = 0;
-
-                            if (isset($msg['reactions']['results'])) {
-                                foreach ($msg['reactions']['results'] as $res) {
-                                    $reactionsCount += $res['count'] ?? 0;
+                        if (isset($messagesResult['messages'])) {
+                            foreach ($messagesResult['messages'] as $msg) {
+                                if (($msg['_'] ?? '') !== 'message') {
+                                    continue;
                                 }
-                            }
 
-                            Post::where('channel_id', $this->channel->id)
-                                ->where('telegram_post_id', (string) $msg['id'])
-                                ->update([
-                                    'views' => $views,
-                                    'forwards' => $forwards,
-                                    'reactions' => $reactionsCount,
-                                ]);
+                                $views = $msg['views'] ?? 0;
+                                $forwards = $msg['forwards'] ?? 0;
+                                $reactionsCount = 0;
+
+                                if (isset($msg['reactions']['results'])) {
+                                    foreach ($msg['reactions']['results'] as $res) {
+                                        $reactionsCount += $res['count'] ?? 0;
+                                    }
+                                }
+
+                                $text = $msg['message'] ?? null;
+
+                                // Parse media type if present
+                                $mediaType = null;
+                                if (isset($msg['media']['_'])) {
+                                    if ($msg['media']['_'] === 'messageMediaPhoto') {
+                                        $mediaType = 'photo';
+                                    } elseif ($msg['media']['_'] === 'messageMediaDocument') {
+                                        if (isset($msg['media']['document']['mime_type']) && str_starts_with($msg['media']['document']['mime_type'], 'video/')) {
+                                            $mediaType = 'video';
+                                        } else {
+                                            $mediaType = 'document';
+                                        }
+                                    }
+                                }
+
+                                $postedAt = isset($msg['date'])
+                                    ? Carbon::createFromTimestamp($msg['date'])
+                                    : now();
+
+                                Post::updateOrCreate(
+                                    [
+                                        'channel_id' => $this->channel->id,
+                                        'telegram_post_id' => (string) $msg['id'],
+                                    ],
+                                    [
+                                        'text' => $text,
+                                        'caption' => DB::raw('COALESCE(caption, NULL)'),
+                                        'media_type' => $mediaType ? DB::raw("COALESCE(media_type, '{$mediaType}')") : DB::raw('media_type'),
+                                        'views' => $views,
+                                        'forwards' => $forwards,
+                                        'reactions' => $reactionsCount,
+                                        'posted_at' => $postedAt,
+                                    ]
+                                );
+                            }
                         }
                     }
                     Log::channel('telegram')->info('MTProto sync successful', ['channel_id' => $this->channel->id]);
