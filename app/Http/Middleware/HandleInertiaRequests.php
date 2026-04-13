@@ -35,6 +35,7 @@ class HandleInertiaRequests extends Middleware
                     'telegram_username' => $request->user()->telegram_username,
                     'telegram_linked' => ! is_null($request->user()->telegram_chat_id),
                     'avatar' => $request->user()->avatar,
+                    'active_channels_count' => $request->user()->channels()->where('is_active', true)->count(),
                 ] : null,
             ],
             'flash' => [

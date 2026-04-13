@@ -33,21 +33,7 @@ function onAvatarChange(e) {
     }
 }
 
-function saveProfile() {
-    form.post('/dashboard/settings', {
-        forceFormData: true,
-        onSuccess: () => {
-            form.password = '';
-            form.password_confirmation = '';
-        },
-        queryParams: {
-            _method: 'PATCH'
-        }
-    });
-}
-
-// Alternatively, Inertia has a method to explicitly spoof PATCH
-function saveProfileV2() {
+function submit() {
     form.transform((data) => ({
         ...data,
         _method: 'PATCH',
@@ -59,8 +45,6 @@ function saveProfileV2() {
         }
     });
 }
-// Using the transformation approach
-const submit = saveProfileV2;
 
 // Telegram linking
 const telegramLink = ref(props.telegram_link);
@@ -90,207 +74,149 @@ function copyLink() {
 <template>
     <DashboardLayout>
 
-        <div class="max-w-2xl">
+        <div class="max-w-6xl">
 
-            <div class="mb-8">
-                <h1 class="text-2xl font-bold text-white">Settings</h1>
-                <p class="text-gray-500 text-sm mt-1">Manage your profile and integrations</p>
+            <div class="mb-12">
+                <h1 class="text-3xl font-black text-white tracking-tight">Account Intelligence</h1>
+                <p class="text-gray-600 text-sm mt-1 uppercase font-bold tracking-widest">Manage your neural identity and integrations</p>
             </div>
 
-            <!-- Profile card -->
-            <div class="bg-[#16161f] border border-white/5 rounded-2xl p-6 mb-6">
-                <h2 class="text-base font-semibold text-white mb-5">Profile</h2>
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+                
+                <!-- Profile Section (2/3 width) -->
+                <div class="xl:col-span-2 space-y-8">
+                    <form @submit.prevent="submit" class="bg-[#111118] border border-white/[0.05] rounded-[2.5rem] p-10">
+                        <div class="flex items-center justify-between mb-10">
+                            <h2 class="text-lg font-black text-white tracking-tight uppercase">Profile Matrix</h2>
+                            <button
+                                type="submit"
+                                :disabled="form.processing"
+                                class="px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-xl shadow-indigo-600/20 disabled:opacity-50"
+                            >
+                                {{ form.processing ? 'Syncing...' : 'Save Changes' }}
+                            </button>
+                        </div>
 
-                <form @submit.prevent="submit" class="space-y-6">
-                    <!-- Avatar -->
-                    <div class="flex items-center gap-5 mb-8">
-                        <div class="relative group">
-                            <img v-if="avatarPreview" :src="avatarPreview" class="w-20 h-20 rounded-2xl object-cover border border-white/10" />
-                            <div v-else class="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white border border-white/10">
-                                {{ user?.name?.[0]?.toUpperCase() ?? 'U' }}
+                        <!-- Avatar Row -->
+                        <div class="flex items-center gap-8 mb-12 pb-10 border-b border-white/[0.03]">
+                            <div class="relative group">
+                                <div class="w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl font-black text-white shadow-2xl border border-white/10 overflow-hidden">
+                                     <img v-if="avatarPreview" :src="avatarPreview" class="w-full h-full object-cover" />
+                                     <span v-else>{{ user?.name?.[0] }}</span>
+                                </div>
+                                <label class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl cursor-pointer backdrop-blur-sm">
+                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    <input type="file" class="hidden" @change="onAvatarChange" accept="image/*" />
+                                </label>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-black text-white tracking-tight">{{ user?.name }}</h3>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md" :class="user?.plan === 'pro' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'">
+                                        {{ user?.plan === 'pro' ? '⭐ Pro Intel' : '🆓 Standard' }}
+                                    </span>
+                                    <p class="text-[10px] font-bold text-gray-700 uppercase tracking-widest">{{ user?.email }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2-Column Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Username</label>
+                                <input v-model="form.username" type="text" class="w-full bg-black/40 border-white/[0.05] border focus:border-indigo-500/50 focus:ring-0 rounded-2xl px-5 py-3.5 text-sm font-bold text-white transition-all" />
+                                <p v-if="form.errors.username" class="text-[10px] text-red-500 font-bold ml-1">{{ form.errors.username }}</p>
                             </div>
                             
-                            <label class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl cursor-pointer">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                </svg>
-                                <input type="file" class="hidden" @change="onAvatarChange" accept="image/*" />
-                            </label>
-                        </div>
-                        <div>
-                            <p class="font-bold text-white text-lg">{{ user?.name }}</p>
-                            <span class="text-xs px-2 py-0.5 rounded-full mt-1 inline-block"
-                                  :class="user?.plan === 'pro' ? 'bg-amber-500/20 text-amber-400' : 'bg-indigo-500/20 text-indigo-400'">
-                                {{ user?.plan === 'pro' ? '⭐ Pro Account' : '🆓 Free Plan' }}
-                            </span>
-                            <p v-if="form.errors.avatar" class="mt-1 text-xs text-red-400">{{ form.errors.avatar }}</p>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Username -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
-                            <input
-                                v-model="form.username"
-                                type="text"
-                                placeholder="yourusername"
-                                class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50"
-                            />
-                            <p v-if="form.errors.username" class="mt-1 text-xs text-red-400">{{ form.errors.username }}</p>
-                        </div>
-
-                        <!-- Email -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1.5">Email</label>
-                            <input
-                                v-model="form.email"
-                                type="email"
-                                placeholder="you@example.com"
-                                class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50"
-                            />
-                            <p v-if="form.errors.email" class="mt-1 text-xs text-red-400">{{ form.errors.email }}</p>
-                        </div>
-
-                        <!-- Phone -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1.5">Phone</label>
-                            <input
-                                v-model="form.phone"
-                                type="tel"
-                                placeholder="+998901234567"
-                                class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50"
-                            />
-                            <p v-if="form.errors.phone" class="mt-1 text-xs text-red-400">{{ form.errors.phone }}</p>
-                        </div>
-                    </div>
-
-                    <!-- Bio -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1.5">Bio</label>
-                        <textarea
-                            v-model="form.bio"
-                            rows="3"
-                            placeholder="Tell us a bit about yourself…"
-                            class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 resize-none"
-                        />
-                        <p v-if="form.errors.bio" class="mt-1 text-xs text-red-400">{{ form.errors.bio }}</p>
-                    </div>
-
-                    <div class="pt-6 border-t border-white/5">
-                        <h3 class="text-sm font-semibold text-white mb-4">Security</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-400 mb-1.5">New Password</label>
-                                <input
-                                    v-model="form.password"
-                                    type="password"
-                                    placeholder="••••••••"
-                                    class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50"
-                                />
-                                <p v-if="form.errors.password" class="mt-1 text-xs text-red-400">{{ form.errors.password }}</p>
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Email Node</label>
+                                <input v-model="form.email" type="email" class="w-full bg-black/40 border-white/[0.05] border focus:border-indigo-500/50 focus:ring-0 rounded-2xl px-5 py-3.5 text-sm font-bold text-white transition-all" />
+                                <p v-if="form.errors.email" class="text-[10px] text-red-500 font-bold ml-1">{{ form.errors.email }}</p>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-400 mb-1.5">Confirm Password</label>
-                                <input
-                                    v-model="form.password_confirmation"
-                                    type="password"
-                                    placeholder="••••••••"
-                                    class="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 text-sm outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50"
-                                />
+
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Primary Phone</label>
+                                <input v-model="form.phone" type="tel" class="w-full bg-black/40 border-white/[0.05] border focus:border-indigo-500/50 focus:ring-0 rounded-2xl px-5 py-3.5 text-sm font-bold text-white transition-all" />
+                                <p v-if="form.errors.phone" class="text-[10px] text-red-500 font-bold ml-1">{{ form.errors.phone }}</p>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Account Bio</label>
+                                <textarea v-model="form.bio" rows="1" class="w-full bg-black/40 border-white/[0.05] border focus:border-indigo-500/50 focus:ring-0 rounded-2xl px-5 py-3.5 text-sm font-bold text-white transition-all resize-none"></textarea>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Split Bottom Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Security Card -->
+                        <div class="bg-[#111118] border border-white/[0.05] rounded-[2.5rem] p-8">
+                            <h3 class="text-sm font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                Security Shield
+                            </h3>
+                            <form @submit.prevent="submit" class="space-y-4">
+                                <input v-model="form.password" type="password" placeholder="New Neural Key" class="w-full bg-black/40 border-white/[0.05] border focus:border-indigo-500/50 focus:ring-0 rounded-xl px-5 py-3 text-xs font-bold text-white" />
+                                <input v-model="form.password_confirmation" type="password" placeholder="Confirm Key" class="w-full bg-black/40 border-white/[0.05] border focus:border-indigo-500/50 focus:ring-0 rounded-xl px-5 py-3 text-xs font-bold text-white" />
+                                <button type="submit" class="w-full py-3 bg-white/5 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white hover:bg-white/10 transition-all">Update Key</button>
+                            </form>
+                        </div>
+
+                        <!-- Integration Card (Static View) -->
+                        <div class="bg-[#111118] border border-white/[0.05] rounded-[2.5rem] p-8">
+                            <h3 class="text-sm font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
+                                Telegram Node
+                            </h3>
+                            <div v-if="user?.telegram_linked" class="space-y-4">
+                                <div class="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl flex items-center justify-between">
+                                    <div>
+                                        <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Status: Connected</p>
+                                        <p class="text-xs font-bold text-white mt-0.5">@{{ user.telegram_username }}</p>
+                                    </div>
+                                    <div class="text-xl">✅</div>
+                                </div>
+                                <button class="w-full py-3 bg-white/5 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white hover:bg-white/10 transition-all">Deep Settings</button>
+                            </div>
+                            <div v-else class="text-center py-6">
+                                <p class="text-[10px] font-bold text-gray-600 uppercase mb-4 tracking-widest">No Node Connected</p>
+                                <button @click="refreshLink" class="px-6 py-2 bg-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest text-white">Initialize</button>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="pt-4 flex justify-end">
-                        <button
-                            type="submit"
-                            :disabled="form.processing"
-                            class="px-8 py-3 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-xl shadow-indigo-600/20 disabled:opacity-60"
-                        >
-                            {{ form.processing ? 'Syncing Profile…' : 'Save Changes' }}
+                <!-- Danger Zone (1/3 width) -->
+                <div class="space-y-8">
+                    <div class="bg-red-500/[0.03] border border-red-500/10 rounded-[2.5rem] p-8">
+                        <h3 class="text-sm font-black text-red-500 uppercase tracking-widest mb-6">Danger Zone</h3>
+                        <p class="text-xs font-bold text-gray-600 leading-relaxed mb-6">
+                            Disconnecting your Telegram node will stop all live tracking and viral detection for your associated channels.
+                        </p>
+                        
+                        <div class="space-y-3">
+                            <button v-if="user?.telegram_linked" class="w-full py-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500 hover:text-white transition-all">
+                                Unlink Telegram Node
+                            </button>
+                            <button class="w-full py-4 rounded-2xl bg-white/5 border border-white/5 text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-red-400 hover:bg-red-500/5 transition-all">
+                                Wipe Local Cache
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#111118] border border-white/[0.05] rounded-[2.5rem] p-8">
+                        <h3 class="text-sm font-black text-white uppercase tracking-widest mb-4">Neural Plan</h3>
+                        <p class="text-2xl font-black text-white tracking-tighter mb-1">{{ user.plan === 'pro' ? 'Elite Pulse' : 'Standard Node' }}</p>
+                        <p class="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-6">Active subscription</p>
+                        
+                        <div v-if="user.plan === 'free'" class="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl mb-6">
+                            <p class="text-[10px] font-bold text-indigo-400 leading-tight">Unlock viral detection and hourly sync with Elite Pulse.</p>
+                        </div>
+                        
+                        <button class="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-indigo-600/20">
+                            {{ user.plan === 'pro' ? 'Manage Billing' : 'Upgrade to Elite' }}
                         </button>
                     </div>
-                </form>
-            </div>
-
-            <!-- Telegram integration card -->
-            <div class="bg-[#16161f] border border-white/5 rounded-2xl p-6">
-                <div class="flex items-center gap-3 mb-5">
-                    <div class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center text-sky-400">
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.04 9.607c-.148.658-.557.818-1.126.508l-3.107-2.29-1.5 1.445c-.165.165-.305.305-.625.305l.222-3.157 5.75-5.193c.25-.222-.054-.345-.386-.123L7.25 14.77l-3.056-.955c-.663-.21-.678-.663.138-.98l11.934-4.602c.553-.2 1.035.137.296.015z"/>
-                        </svg>
-                    </div>
-                    <h2 class="text-base font-semibold text-white">Telegram Integration</h2>
-                </div>
-
-                <!-- Already linked -->
-                <div v-if="user?.telegram_linked" class="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
-                    <span class="text-green-400 text-xl">✅</span>
-                    <div>
-                        <p class="text-sm font-medium text-green-400">Telegram connected</p>
-                        <p class="text-xs text-gray-500">
-                            {{ user.telegram_username ? '@' + user.telegram_username : 'Account linked' }}
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Not linked -->
-                <div v-else>
-                    <p class="text-sm text-gray-400 mb-4">
-                        Connect your Telegram account to receive notifications and manage channels directly from the bot.
-                    </p>
-
-                    <div v-if="telegramLink" class="space-y-3">
-                        <!-- Link input -->
-                        <div class="flex gap-2">
-                            <input
-                                :value="telegramLink"
-                                readonly
-                                class="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-400 outline-none truncate"
-                            />
-                            <button
-                                @click="copyLink"
-                                class="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-gray-400 hover:text-white hover:border-white/20 transition-all"
-                            >
-                                {{ linkCopied ? '✅' : '📋' }}
-                            </button>
-                        </div>
-
-                        <!-- CTA buttons -->
-                        <div class="flex gap-2">
-                            <a
-                                :href="telegramLink"
-                                target="_blank"
-                                class="flex-1 py-2.5 text-center rounded-lg text-sm font-semibold bg-sky-500 hover:bg-sky-400 text-white transition-all"
-                            >
-                                Open in Telegram
-                            </a>
-                            <button
-                                @click="refreshLink"
-                                :disabled="linkLoading"
-                                class="px-4 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 transition-all"
-                            >
-                                {{ linkLoading ? '…' : '🔄' }}
-                            </button>
-                        </div>
-
-                        <p class="text-xs text-gray-600">Link expires in 15 minutes. Click 🔄 to refresh.</p>
-                    </div>
-                </div>
-
-                <!-- Add channel instructions -->
-                <div class="mt-6 p-4 bg-white/[0.03] rounded-xl border border-white/5">
-                    <p class="text-xs font-semibold text-gray-400 mb-2">📡 How to add a channel</p>
-                    <ol class="text-xs text-gray-500 space-y-1 list-decimal list-inside">
-                        <li>Open your Telegram channel settings</li>
-                        <li>Go to Administrators → Add Administrator</li>
-                        <li>Search for <span class="text-indigo-400 font-medium">@{{ bot_username }}</span></li>
-                        <li>Grant at minimum "Post Messages" permission</li>
-                        <li>Analytics will start tracking automatically ✅</li>
-                    </ol>
                 </div>
             </div>
 
