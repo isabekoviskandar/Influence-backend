@@ -52,7 +52,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185\" \"php artisan serve\" \"php -d memory_limit=1G artisan queue:listen --queue=default,sync --tries=3 --timeout=90\" \"php artisan pail --timeout=0\" --names=server,queue,logs --kill-others"
+            "php -d memory_limit=1G artisan queue:listen --queue=default,sync --tries=3 --timeout=90"
         ],
         "test": [
             "@php artisan config:clear --ansi",
