@@ -59,8 +59,12 @@ class FetchHistoricalPosts implements ShouldQueue
                 ->setExtra(storage_path('logs/madeline.log'))
                 ->setLevel(Logger::LEVEL_FATAL);
 
-            // Set session file per bot to avoid conflicts
-            $sessionPath = storage_path('app/private/madeline_bot.madeline');
+            // Set session file per bot to avoid conflicts. Ensure directory exists.
+            $sessionDir = storage_path('app/telegram');
+            if (! file_exists($sessionDir)) {
+                mkdir($sessionDir, 0775, true);
+            }
+            $sessionPath = $sessionDir.'/madeline_bot.madeline';
 
             // Initialize MTProto Client
             $MadelineProto = new API($sessionPath, $settings);

@@ -62,7 +62,11 @@ class SyncChannelStats implements ShouldQueue
                         ->setExtra(storage_path('logs/madeline.log'))
                         ->setLevel(Logger::LEVEL_FATAL);
 
-                    $MadelineProto = new \danog\MadelineProto\API('storage/app/telegram/bot_session_sync.madeline', $settings);
+                    $sessionDir = storage_path('app/telegram');
+                    if (! file_exists($sessionDir)) {
+                        mkdir($sessionDir, 0775, true);
+                    }
+                    $MadelineProto = new \danog\MadelineProto\API($sessionDir.'/bot_session_sync.madeline', $settings);
                     $MadelineProto->botLogin($botToken);
 
                     // Peer Discovery: Prioritize numeric ID for admins, fallback to username
