@@ -42,6 +42,9 @@ class SyncChannelStats implements ShouldQueue
             'chat_id' => $chatId,
         ]);
 
+        // Clear previous error on start
+        $this->channel->update(['sync_error' => null]);
+
         $memberCount = 0;
         $avgViews = 0;
         $engagementRate = 0;
@@ -215,7 +218,12 @@ class SyncChannelStats implements ShouldQueue
             ]);
 
             if (str_contains(strtolower($e->getMessage()), 'kicked') || str_contains(strtolower($e->getMessage()), 'not found')) {
-                $this->channel->update(['is_active' => false]);
+                $this->channel->update([
+                    'is_active' => false,
+                    'sync_error' => $e->getMessage(),
+                ]);
+            } else {
+                $this->channel->update(['sync_error' => $e->getMessage()]);
             }
 
             throw $e;

@@ -142,10 +142,16 @@ const statsConfig = [
                 :href="`/dashboard/channels/${ch.id}`"
                 class="group relative bg-[#111118] border border-white/[0.05] rounded-[2.5rem] p-10 transition-all hover:border-white/10 hover:shadow-2xl hover:shadow-black/50"
             >
-                <div class="absolute top-6 right-6 flex items-center gap-2">
-                    <span v-if="ch.is_active" class="flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                    <span class="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 group-hover:text-indigo-400/80 transition-colors">
-                        {{ user.plan === 'pro' ? 'Premium' : 'Free Tier' }}
+                <div class="absolute top-6 right-6 flex flex-col items-end gap-1">
+                    <div class="flex items-center gap-2">
+                        <span v-if="ch.is_active" class="flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                        <span v-else class="flex h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+                        <span class="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 group-hover:text-indigo-400/80 transition-colors">
+                            {{ user.plan === 'pro' ? 'Premium' : 'Free Tier' }}
+                        </span>
+                    </div>
+                    <span v-if="ch.sync_error" class="text-[8px] font-bold text-red-500/80 uppercase tracking-tighter truncate max-w-[120px]">
+                        Sync Error: {{ ch.sync_error }}
                     </span>
                 </div>
 

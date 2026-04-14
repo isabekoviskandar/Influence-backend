@@ -91,6 +91,7 @@ class DashboardController extends Controller
             'engagement_rate' => $ch->engagement_rate,
             'potential_score' => $ch->potential_score,
             'is_active' => $ch->is_active,
+            'sync_error' => $ch->sync_error,
             'posts_count' => $ch->posts_count,
             'last_synced_at' => $ch->last_synced_at?->diffForHumans(),
             'sparkline' => $ch->stats->reverse()->pluck('member_count')->values(),
