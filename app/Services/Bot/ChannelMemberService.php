@@ -78,7 +78,7 @@ class ChannelMemberService
         ]);
 
         // Immediately kick off history fetch, which will then trigger stats sync
-        FetchHistoricalPosts::dispatch($channel)->onQueue('sync');
+        FetchHistoricalPosts::dispatch($channel)->onQueue('default');
 
         // Notify the owner if we know who they are
         if ($user) {

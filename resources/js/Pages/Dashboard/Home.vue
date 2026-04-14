@@ -202,6 +202,22 @@ const statsConfig = [
                         <p class="text-[9px] font-bold text-gray-700 uppercase tracking-widest mt-1">Viral Power</p>
                     </div>
                 </div>
+
+                <!-- Sync Progress Bar Overlay -->
+                <div v-if="ch.sync_status === 'syncing'" class="absolute inset-x-0 bottom-0 p-1">
+                    <div class="bg-[#0a0a0f] rounded-b-[2.5rem] p-3 overflow-hidden group/progress">
+                        <div class="flex items-center justify-between mb-2 px-3">
+                            <span class="text-[9px] font-black text-indigo-400 uppercase tracking-widest animate-pulse">Syncing History...</span>
+                            <span class="text-[9px] font-bold text-gray-500">{{ Math.round((ch.sync_current / ch.sync_total) * 100) }}%</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                            <div 
+                                class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 bg-[length:200%_100%] animate-shimmer transition-all duration-1000 ease-out"
+                                :style="{ width: `${(ch.sync_current / ch.sync_total) * 100}%` }"
+                            ></div>
+                        </div>
+                    </div>
+                </div>
             </Link>
         </div>
 

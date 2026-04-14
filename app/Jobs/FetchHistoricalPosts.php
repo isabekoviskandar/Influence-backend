@@ -5,12 +5,14 @@ namespace App\Jobs;
 use App\Models\Channel;
 use App\Services\Bot\ChannelPostService;
 use danog\MadelineProto\API;
+use danog\MadelineProto\Logger;
 use danog\MadelineProto\Settings;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class FetchHistoricalPosts implements ShouldQueue
@@ -25,12 +27,14 @@ class FetchHistoricalPosts implements ShouldQueue
     public int $backoff = 60;
 
     public function __construct(
-        public readonly Channel $channel
+        public readonly Channel $channel,
+        public ?int $nextId = null,
+        public ?int $maxId = null
     ) {}
 
     public function handle(ChannelPostService $postService): void
     {
-        Log::channel('telegram')->info('Starting historical post fetch via MTProto', [
+        Log::channel('telegram')->info('Historical sync chunk: '.($this->nextId ?? 'initial'), [
             'channel_id' => $this->channel->id,
             'chat_id' => $this->channel->chat_id,
         ]);
@@ -41,8 +45,6 @@ class FetchHistoricalPosts implements ShouldQueue
 
         if (! $apiId || ! $apiHash) {
             Log::channel('telegram')->error('TELEGRAM_API_ID or TELEGRAM_API_HASH missing. Aborting MTProto fetch.');
-
-            // Fallback to normal behavior even if MTProto fails
             SyncChannelStats::dispatch($this->channel)->onQueue('sync');
 
             return;
@@ -52,6 +54,10 @@ class FetchHistoricalPosts implements ShouldQueue
             // Setup MadelineProto settings
             $settings = new Settings;
             $settings->getAppInfo()->setApiId((int) $apiId)->setApiHash($apiHash);
+            $settings->getLogger()
+                ->setType(Logger::LOGGER_FILE)
+                ->setExtra(storage_path('logs/madeline.log'))
+                ->setLevel(Logger::LEVEL_FATAL);
 
             // Set session file per bot to avoid conflicts
             $sessionPath = storage_path('app/private/madeline_bot.madeline');
@@ -62,54 +68,101 @@ class FetchHistoricalPosts implements ShouldQueue
             // Start up and login using the bot token
             $MadelineProto->botLogin($botToken);
 
-            try {
-                // To fetch history on MTProto, Madeline needs the peer's access_hash.
-                // We try to pull info. If it's a private channel and we missed the MTProto update
-                // because of HTTP webhooks, it will throw PeerNotInDbException.
-                $MadelineProto->getInfo((int) $this->channel->chat_id);
-            } catch (\Exception $e) {
-                if (str_contains($e->getMessage(), 'internal peer database')) {
-                    Log::channel('telegram')->warning('Private channel history fetch aborted. MTProto lacks access_hash due to Bot API webhook interception.', [
-                        'channel_id' => $this->channel->id,
-                    ]);
+            $intId = (int) $this->channel->chat_id;
+            $usernamePeer = $this->channel->username ? '@'.$this->channel->username : null;
 
-                    // Trigger sync and cleanly exit without crashing
+            try {
+                // Prioritize numeric ID
+                $MadelineProto->getInfo($intId);
+                $peer = $intId;
+            } catch (\Exception $e) {
+                if ($usernamePeer) {
+                    try {
+                        $MadelineProto->getInfo($usernamePeer);
+                        $peer = $usernamePeer;
+                    } catch (\Exception $e2) {
+                        Log::channel('telegram')->warning('Peer resolution failed in historical fetcher (both ID and username)', [
+                            'channel_id' => $this->channel->id,
+                            'id' => $intId,
+                            'username' => $usernamePeer,
+                        ]);
+                        SyncChannelStats::dispatch($this->channel)->onQueue('sync');
+
+                        return;
+                    }
+                } else {
                     SyncChannelStats::dispatch($this->channel)->onQueue('sync');
 
                     return;
                 }
             }
 
-            // Fetch the last 150 posts
-            $limit = 150;
+            // --- PROGRESS INITIALIZATION ---
+            $currentMaxId = $this->maxId;
+            if ($currentMaxId === null) {
+                // Determine Top ID for the first time
+                try {
+                    $pwrChat = $MadelineProto->getPwrChat($peer);
+                    $currentMaxId = (int) ($pwrChat['top_message'] ?? $pwrChat['read_inbox_max_id'] ?? 0);
 
-            $history = $MadelineProto->messages->getHistory([
-                'peer' => $this->channel->chat_id,
-                'offset_id' => 0,
-                'offset_date' => 0,
-                'add_offset' => 0,
-                'limit' => $limit,
-                'max_id' => 0,
-                'min_id' => 0,
-                'hash' => 0,
+                    if ($currentMaxId === 0) {
+                        $fullInfo = $MadelineProto->getFullInfo($peer);
+                        $currentMaxId = (int) ($fullInfo['Full']['top_message'] ?? 0);
+                    }
+
+                    // Fallback to probe
+                    if ($currentMaxId === 0) {
+                        $response = Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
+                            'chat_id' => $this->channel->chat_id,
+                            'text' => '.',
+                            'disable_notification' => true,
+                        ]);
+                        $tempMsg = $response->json();
+                        if (isset($tempMsg['result']['message_id'])) {
+                            $currentMaxId = (int) $tempMsg['result']['message_id'];
+                            Http::post("https://api.telegram.org/bot{$botToken}/deleteMessage", [
+                                'chat_id' => $this->channel->chat_id,
+                                'message_id' => $currentMaxId,
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::channel('telegram')->debug('ID Probe failure', ['error' => $e->getMessage()]);
+                }
+
+                if ($currentMaxId === 0) {
+                    Log::channel('telegram')->error('Could not determine Top ID for recursive sync.');
+                    SyncChannelStats::dispatch($this->channel)->onQueue('sync');
+
+                    return;
+                }
+
+                $this->channel->update([
+                    'sync_status' => 'syncing',
+                    'sync_total' => $currentMaxId,
+                    'sync_current' => 0,
+                ]);
+            }
+
+            // Target batch
+            $targetId = $this->nextId ?? $currentMaxId;
+            $batchSize = 150; // Smaller batches for better recursion visibility
+            $batchStart = max(1, $targetId - $batchSize + 1);
+            $ids = range($batchStart, $targetId);
+
+            Log::channel('telegram')->info("Fetching batch [{$batchStart} - {$targetId}] for channel {$this->channel->id}");
+
+            $messagesResult = $MadelineProto->channels->getMessages([
+                'channel' => $this->channel->chat_id,
+                'id' => $ids,
             ]);
 
-            $messages = $history['messages'] ?? [];
-            $count = count($messages);
-
-            Log::channel('telegram')->info("MTProto fetched {$count} historical messages", [
-                'channel_id' => $this->channel->id,
-            ]);
-
-            // Save posts utilizing our existing service format
+            $messages = $messagesResult['messages'] ?? [];
             foreach ($messages as $msg) {
-                // Ensure it's not a service message
                 if (! isset($msg['_']) || $msg['_'] !== 'message') {
                     continue;
                 }
 
-                // We mock the format that the Telegram Bot API webhook uses
-                // so we can reuse `ChannelPostService->handle()`
                 $mockWebhookFormat = [
                     'chat' => ['id' => $this->channel->chat_id],
                     'message_id' => $msg['id'],
@@ -119,64 +172,50 @@ class FetchHistoricalPosts implements ShouldQueue
                     'forwards' => $msg['forwards'] ?? 0,
                 ];
 
-                // Deal with media formatting adapter from MTProto to BotAPI
                 if (isset($msg['media'])) {
-                    // Quick map for media types
-                    $mediaType = str_replace('messageMedia', '', $msg['media']['_'] ?? '');
-                    $typeLower = strtolower($mediaType);
-
-                    if (in_array($typeLower, ['photo', 'document'])) {
-                        // The existing ChannelPostService `extractMedia` expects Bot API arrays.
-                        // We will inject a raw dummy object to trigger DownloadPostMedia
-                        // if we want to download historical posts, or we skip media for history.
-                        // For MVP: let's inject a fake 'document' to pass the format parser
-
-                        // Wait: MadelineProto has a built-in download feature for MTProto,
-                        // but `DownloadPostMedia` uses the standard HTTP Bot API!
-                        // To allow the standard API to fetch it, we'd need the standard API `file_id`.
-                        // MTProto doesn't give a web `file_id` easily, it gives binary file references.
-                        // To keep it simple, we don't trigger the HTTP downloader for MTProto backfills.
-                        // We simply log the post as having media.
-                        $mockWebhookFormat['document'] = [
-                            'file_id' => null, // Skip download for history
-                            'file_size' => 0,
-                        ];
-                    }
+                    $mockWebhookFormat['document'] = ['file_id' => null, 'file_size' => 0];
                 }
 
-                // Deal with reactions format adapter
                 if (isset($msg['reactions']['results'])) {
                     $mockWebhookFormat['reactions']['results'] = [];
                     foreach ($msg['reactions']['results'] as $reaction) {
-                        $mockWebhookFormat['reactions']['results'][] = [
-                            'total_count' => $reaction['count'] ?? 1,
-                        ];
+                        $mockWebhookFormat['reactions']['results'][] = ['total_count' => $reaction['count'] ?? 1];
                     }
                 }
 
-                // Force it through our existing post saver
-                // isEdit=false
                 $postService->handle($mockWebhookFormat, false);
             }
 
-            Log::channel('telegram')->info('MTProto historical fetch complete', [
-                'channel_id' => $this->channel->id,
+            // Update Progress in DB
+            $syncedCount = $currentMaxId - $batchStart;
+            $this->channel->update([
+                'sync_current' => min($currentMaxId, $syncedCount),
             ]);
 
-            // Finally, calculate the stats now that the database has up to 150 posts
+            // Re-dispatch if more exists
+            if ($batchStart > 1) {
+                self::dispatch($this->channel, $batchStart - 1, $currentMaxId)
+                    ->delay(now()->addSeconds(15)) // 15s delay between recursive batches
+                    ->onQueue('default');
+
+                Log::channel('telegram')->info("Recursive sync dispatched for next batch starting below {$batchStart}");
+            } else {
+                $this->channel->update(['sync_status' => 'completed']);
+                Log::channel('telegram')->info("Historical sync for channel {$this->channel->id} COMPLETED.");
+            }
+
+            // Refresh stats to show latest counts/views in UI
             SyncChannelStats::dispatch($this->channel)->onQueue('sync');
 
         } catch (\Exception $e) {
-            Log::channel('telegram')->warning('Historical post fetch failed. Telegram architecture restricts bots from pulling legacy history.', [
+            Log::channel('telegram')->warning('Recursive sync chunk failed.', [
                 'channel_id' => $this->channel->id,
                 'error' => $e->getMessage(),
             ]);
 
-            // Even if history fails, trigger sync to initialize the basic channel snapshot
+            // Re-throw if it might be temporary, or just let Sync Stats try to fix UI
             SyncChannelStats::dispatch($this->channel)->onQueue('sync');
-
-            // We do not re-throw the exception so the queue worker doesn't crash on standard Telegram API hard blocks.
-            return;
+            throw $e;
         }
     }
 }

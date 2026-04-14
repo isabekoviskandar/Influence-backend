@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Channel;
 use App\Models\ChannelStat;
 use App\Models\Post;
+use danog\MadelineProto\Logger;
 use danog\MadelineProto\Settings;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -56,12 +57,37 @@ class SyncChannelStats implements ShouldQueue
                     $settings = new Settings;
                     $settings->getAppInfo()->setApiId((int) $apiId);
                     $settings->getAppInfo()->setApiHash($apiHash);
+                    $settings->getLogger()
+                        ->setType(Logger::LOGGER_FILE)
+                        ->setExtra(storage_path('logs/madeline.log'))
+                        ->setLevel(Logger::LEVEL_FATAL);
 
                     $MadelineProto = new \danog\MadelineProto\API('storage/app/telegram/bot_session_sync.madeline', $settings);
                     $MadelineProto->botLogin($botToken);
 
-                    // Peer Discovery: Prioritize username for better resolution, fallback to numeric ID
-                    $peer = $this->channel->username ? '@'.$this->channel->username : (int) $chatId;
+                    // Peer Discovery: Prioritize numeric ID for admins, fallback to username
+                    $intId = (int) $chatId;
+                    $usernamePeer = $this->channel->username ? '@'.$this->channel->username : null;
+
+                    try {
+                        // First try numeric ID - usually succeeds if bot is already admin
+                        $MadelineProto->getInfo($intId);
+                        $peer = $intId;
+                    } catch (\Exception $e) {
+                        if ($usernamePeer) {
+                            Log::channel('telegram')->info('ID resolution failed, trying username fallback', ['peer' => $usernamePeer]);
+                            try {
+                                $MadelineProto->getInfo($usernamePeer);
+                                $peer = $usernamePeer;
+                            } catch (\Exception $e2) {
+                                Log::channel('telegram')->warning('Peer resolution failed (both ID and username)', ['id' => $intId, 'username' => $usernamePeer]);
+                                throw $e2;
+                            }
+                        } else {
+                            throw $e;
+                        }
+                    }
+
                     $pwrChat = $MadelineProto->getPwrChat($peer);
                     $memberCount = $pwrChat['participants_count'] ?? 0;
 
@@ -173,14 +199,20 @@ class SyncChannelStats implements ShouldQueue
             }
 
             // Recalculate metrics based on updated DB data
-            $allRecentPosts = Post::where('channel_id', $this->channel->id)
+            // 1. Lifetime Average (All posts synced so far)
+            $allPostsQuery = Post::where('channel_id', $this->channel->id);
+            $lifetimeAvgViews = (int) ($allPostsQuery->avg('views') ?? 0);
+            $totalSyncedPosts = $allPostsQuery->count();
+
+            // 2. Recent Average (Last 100 posts)
+            $recentPosts = Post::where('channel_id', $this->channel->id)
                 ->orderBy('posted_at', 'desc')
                 ->limit(100)
                 ->get();
+            $recentAvgViews = (int) ($recentPosts->avg('views') ?? 0);
 
-            $avgViews = (int) ($allRecentPosts->avg('views') ?? 0);
-            $engagementRate = $memberCount > 0 ? round(($avgViews / $memberCount) * 100, 2) : 0;
-
+            // 3. Analytics derived from Lifetime data
+            $engagementRate = $memberCount > 0 ? round(($lifetimeAvgViews / $memberCount) * 100, 2) : 0;
             $growthPercent = $this->calcGrowthPercent($memberCount);
             $potentialScore = $this->calcPotentialScore($memberCount, $engagementRate, $growthPercent);
 
@@ -188,8 +220,9 @@ class SyncChannelStats implements ShouldQueue
             ChannelStat::create([
                 'channel_id' => $this->channel->id,
                 'member_count' => $memberCount,
-                'avg_views' => $avgViews,
-                'post_count' => $allRecentPosts->count(),
+                'avg_views' => $lifetimeAvgViews,
+                'avg_views_recent' => $recentAvgViews,
+                'post_count' => $totalSyncedPosts,
                 'engagement_rate' => $engagementRate,
                 'growth_percent' => $growthPercent,
                 'potential_score' => $potentialScore,
@@ -199,16 +232,18 @@ class SyncChannelStats implements ShouldQueue
             // 4. Update the channel's latest metrics
             $this->channel->update([
                 'member_count' => $memberCount,
-                'avg_views' => $avgViews,
+                'avg_views' => $lifetimeAvgViews,
+                'avg_views_recent' => $recentAvgViews,
                 'engagement_rate' => $engagementRate,
                 'potential_score' => $potentialScore,
                 'last_synced_at' => now(),
             ]);
 
-            Log::channel('telegram')->info('SyncChannelStats complete', [
+            Log::channel('telegram')->info('SyncChannelStats complete (Dual Analytics)', [
                 'channel_id' => $this->channel->id,
-                'member_count' => $memberCount,
-                'avg_views' => $avgViews,
+                'lifetime_avg' => $lifetimeAvgViews,
+                'recent_avg' => $recentAvgViews,
+                'total_posts' => $totalSyncedPosts,
             ]);
 
         } catch (TelegramSDKException $e) {
