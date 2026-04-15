@@ -39,7 +39,7 @@ class FetchHistoricalPosts implements ShouldQueue
 
     public function handle(ChannelPostService $postService): void
     {
-        Log::channel('telegram')->info('Historical sync chunk: '.($this->nextId ?? 'initial'), [
+        Log::info('Historical sync chunk: '.($this->nextId ?? 'initial'), [
             'channel_id' => $this->channel->id,
             'chat_id' => $this->channel->chat_id,
         ]);
@@ -49,7 +49,7 @@ class FetchHistoricalPosts implements ShouldQueue
         $botToken = config('services.telegram.bot_token');
 
         if (! $apiId || ! $apiHash || ! $botToken) {
-            Log::channel('telegram')->error('Telegram config missing');
+            Log::error('Telegram config missing');
 
             return;
         }
@@ -67,35 +67,45 @@ class FetchHistoricalPosts implements ShouldQueue
                 mkdir($sessionDir, 0775, true);
             }
 
-            // 🔥 unique session per channel (FIXED)
             $sessionPath = $sessionDir.'/madeline_'.$this->channel->id.'.madeline';
-
             $MadelineProto = new API($sessionPath, $settings);
 
-            // safer login
+            // Login
             try {
                 $MadelineProto->getSelf();
             } catch (\Throwable $e) {
                 $MadelineProto->botLogin($botToken);
             }
 
-            $intId = (int) $this->channel->chat_id;
+            // Resolve peer — try username first (more reliable for bots)
+            $peer = null;
             $usernamePeer = $this->channel->username ? '@'.$this->channel->username : null;
 
-            try {
-                $MadelineProto->getInfo($intId);
-                $peer = $intId;
-            } catch (\Exception $e) {
-                if ($usernamePeer) {
-                    try {
-                        $MadelineProto->getInfo($usernamePeer);
-                        $peer = $usernamePeer;
-                    } catch (\Exception $e2) {
-                        Log::warning('Peer resolve failed', ['channel_id' => $this->channel->id]);
+            if ($usernamePeer) {
+                try {
+                    $MadelineProto->getInfo($usernamePeer);
+                    $peer = $usernamePeer;
+                } catch (\Throwable $e) {
+                    Log::warning('Username peer resolve failed', [
+                        'channel_id' => $this->channel->id,
+                        'username' => $usernamePeer,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
-                        return;
-                    }
-                } else {
+            // Fallback to numeric ID
+            if ($peer === null) {
+                try {
+                    $intId = (int) $this->channel->chat_id;
+                    $MadelineProto->getInfo($intId);
+                    $peer = $intId;
+                } catch (\Throwable $e) {
+                    Log::error('Peer resolve failed completely', [
+                        'channel_id' => $this->channel->id,
+                        'error' => $e->getMessage(),
+                    ]);
+
                     return;
                 }
             }
@@ -104,8 +114,25 @@ class FetchHistoricalPosts implements ShouldQueue
 
             if ($currentMaxId === null) {
                 try {
-                    $pwrChat = $MadelineProto->getPwrChat($peer);
-                    $currentMaxId = (int) ($pwrChat['top_message'] ?? 0);
+                    $fullChannel = $MadelineProto->getInfo($peer);
+                    $topMessage = $fullChannel['Chat']['top_message'] ?? null;
+
+                    // fallback: get recent messages to find top ID
+                    if (! $topMessage) {
+                        $history = $MadelineProto->messages->getHistory([
+                            'peer' => $peer,
+                            'offset_id' => 0,
+                            'offset_date' => 0,
+                            'add_offset' => 0,
+                            'limit' => 1,
+                            'max_id' => 0,
+                            'min_id' => 0,
+                            'hash' => 0,
+                        ]);
+                        $topMessage = $history['messages'][0]['id'] ?? 0;
+                    }
+
+                    $currentMaxId = (int) $topMessage;
                 } catch (\Throwable $e) {
                     Log::error('Failed to get top message', ['error' => $e->getMessage()]);
 
@@ -113,7 +140,7 @@ class FetchHistoricalPosts implements ShouldQueue
                 }
 
                 if ($currentMaxId === 0) {
-                    Log::error('Top message is 0');
+                    Log::error('Top message is 0, channel may be empty');
 
                     return;
                 }
@@ -153,7 +180,6 @@ class FetchHistoricalPosts implements ShouldQueue
             }
 
             $syncedCount = $currentMaxId - $batchStart;
-
             $this->channel->update([
                 'sync_current' => min($currentMaxId, $syncedCount),
             ]);
@@ -164,16 +190,20 @@ class FetchHistoricalPosts implements ShouldQueue
                     ->onQueue('default');
             } else {
                 $this->channel->update(['sync_status' => 'completed']);
+                Log::info('Historical sync completed', ['channel_id' => $this->channel->id]);
             }
 
         } catch (\Throwable $e) {
             Log::error('FetchHistoricalPosts failed', [
                 'channel_id' => $this->channel->id,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
-            // ❌ do NOT throw → prevents queue storm
-            return;
+            $this->channel->update([
+                'sync_status' => 'failed',
+                'sync_error' => $e->getMessage(),
+            ]);
         }
     }
 }
