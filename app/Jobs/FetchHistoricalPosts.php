@@ -66,7 +66,7 @@ class FetchHistoricalPosts implements ShouldQueue
             if (! file_exists($sessionDir)) {
                 mkdir($sessionDir, 0775, true);
             }
-            $sessionPath = $sessionDir.'/madeline_bot.madeline';
+            $sessionPath = $sessionDir.'/bot_session_sync.madeline';
             $MadelineProto = new API($sessionPath, $settings);
 
             // Login
