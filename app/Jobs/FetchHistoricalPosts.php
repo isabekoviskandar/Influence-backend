@@ -66,7 +66,8 @@ class FetchHistoricalPosts implements ShouldQueue
             if (! file_exists($sessionDir)) {
                 mkdir($sessionDir, 0775, true);
             }
-            $sessionPath = $sessionDir.'/madeline_bot.madeline';
+
+            $sessionPath = $sessionDir.'/madeline_'.$this->channel->id.'.madeline';
             $MadelineProto = new API($sessionPath, $settings);
 
             // Login
@@ -191,6 +192,7 @@ class FetchHistoricalPosts implements ShouldQueue
                 $this->channel->update(['sync_status' => 'completed']);
                 Log::info('Historical sync completed', ['channel_id' => $this->channel->id]);
             }
+
         } catch (\Throwable $e) {
             Log::error('FetchHistoricalPosts failed', [
                 'channel_id' => $this->channel->id,
