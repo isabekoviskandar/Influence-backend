@@ -20,7 +20,7 @@
                 "action": "git add ."
             },
             {
-                "action": "./vendor/bin/phpstan analyse"
+                "action": "./vendor/bin/phpstan analyse --memory-limit=512M"
             }
         ]
     }
