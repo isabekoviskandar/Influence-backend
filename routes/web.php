@@ -25,7 +25,12 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->prefix('dashboard')->name('dashboard')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('');
 
+    Route::get('/channels', [ChannelController::class, 'index'])->name('.channels');
     Route::get('/channels/{channel}', [ChannelController::class, 'show'])->name('.channel');
+
+    Route::get('/analytics', [DashboardController::class, 'analytics'])->name('.analytics');
+    Route::get('/posts', [DashboardController::class, 'posts'])->name('.posts');
+    Route::get('/leaderboard', [DashboardController::class, 'leaderboard'])->name('.leaderboard');
 
     Route::get('/settings', [SettingsController::class, 'index'])->name('.settings');
     Route::patch('/settings', [SettingsController::class, 'update'])->name('.settings.update');
@@ -40,5 +45,5 @@ Route::post('/logout', [WebLoginController::class, 'destroy'])
 // ─── Catch-all for Inertia SPA 404 ──────────────────────────────────────────
 
 Route::get('/', function () {
-    return redirect()->route('dashboard');
+    return view('welcome');
 });
