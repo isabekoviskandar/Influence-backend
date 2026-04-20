@@ -28,14 +28,12 @@ class WebRegisterController extends Controller
         $validated = $request->validate([
             'username' => ['required', 'string', 'min:3', 'max:50', 'unique:users'],
             'email' => ['required', 'email', 'unique:users'],
-            'phone' => ['nullable', 'string', 'max:20', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
         $user = User::create([
             'username' => $validated['username'],
             'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
             'password' => Hash::make($validated['password']),
             'plan' => 'free',
         ]);
