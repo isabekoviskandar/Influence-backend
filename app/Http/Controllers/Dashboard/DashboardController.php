@@ -125,11 +125,24 @@ class DashboardController extends Controller
         $channelIds = $channels->pluck('id');
 
         $period = $request->query('period', '30d');
+        $maxDays = $user->max_stats_days;
+
+        if ($period === '90d' && $maxDays < 90) {
+            $period = '30d';
+        }
+        if ($period === '30d' && $maxDays < 30) {
+            $period = '7d';
+        }
+
         $days = match ($period) {
             '7d' => 7,
             '90d' => 90,
             default => 30,
         };
+
+        if ($days > $maxDays) {
+            $days = $maxDays;
+        }
 
         $statsHistory = ChannelStat::whereIn('channel_id', $channelIds)
             ->where('recorded_at', '>=', now()->subDays($days))
@@ -153,10 +166,28 @@ class DashboardController extends Controller
             'total_posts' => Post::whereIn('channel_id', $channelIds)->count(),
         ];
 
+        // Best Timings to Post
+        $bestTimings = Post::whereIn('channel_id', $channelIds)
+            ->whereNotNull('posted_at')
+            ->where('posted_at', '>=', now()->subDays($days))
+            ->get()
+            ->groupBy(fn ($post) => $post->posted_at->format('H'))
+            ->map(fn ($posts, $hour) => [
+                'hour' => str_pad($hour, 2, '0', STR_PAD_LEFT).':00',
+                'avg_views' => round($posts->avg('views')),
+                'total_posts' => $posts->count(),
+            ])
+            ->sortByDesc('avg_views')
+            ->values()
+            ->take(5);
+
         return Inertia::render('Dashboard/Analytics', [
             'stats_history' => $statsHistory,
             'summary' => $summary,
+            'best_timings' => $bestTimings,
             'period' => $period,
+            'user_plan' => $user->plan,
+            'max_stats_days' => $maxDays,
         ]);
     }
 

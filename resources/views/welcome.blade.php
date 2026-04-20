@@ -426,7 +426,10 @@
                 <!-- Pricing Toggle -->
                 <div class="inline-flex items-center p-1 bg-bg-surface border border-divider rounded-lg mb-16">
                     <button id="monthly-toggle" class="px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-white transition-all">Monthly</button>
-                    <button id="yearly-toggle" class="px-4 py-1.5 rounded-md text-sm font-medium text-muted hover:text-white transition-all">Yearly <span class="ml-1 text-[10px] text-accent font-bold">-20%</span></butto            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 px-4 md:px-0">
+                    <button id="yearly-toggle" class="px-4 py-1.5 rounded-md text-sm font-medium text-muted hover:text-white transition-all">Yearly <span class="ml-1 text-[10px] text-accent font-bold">-20%</span></button>
+                </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 px-4 md:px-0">
                 <!-- Free -->
                 <div class="card flex flex-col items-start gap-8">
                     <div>
@@ -476,9 +479,6 @@
                         <li class="flex items-center gap-3"><span class="text-accent">✓</span> Dedicated support</li>
                     </ul>
                     <a href="#" class="btn-ghost border border-divider text-white text-[14px] w-full py-2 rounded-lg text-center font-medium mt-auto">Contact us</a>
-                </div>
-            </div>
-ter font-medium mt-auto">Contact us</a>
                 </div>
             </div>
 

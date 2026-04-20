@@ -68,6 +68,14 @@ class ChannelController extends Controller
             });
 
         $period = $request->query('period', '30d');
+        $maxDays = $request->user()->max_stats_days;
+
+        if ($period === 'all' && $maxDays < 1000) {
+            $period = '30d';
+        }
+        if ($period === '30d' && $maxDays < 30) {
+            $period = '7d';
+        }
 
         $query = $channel->stats()->latest('recorded_at');
 
@@ -79,7 +87,12 @@ class ChannelController extends Controller
             $limit = 30 * 24;
         } else {
             // all
-            $limit = 1000;
+            if ($maxDays !== PHP_INT_MAX) {
+                $query->where('recorded_at', '>=', now()->subDays($maxDays));
+                $limit = $maxDays * 24;
+            } else {
+                $limit = 1000;
+            }
         }
 
         $statsHistory = $query->limit($limit)
@@ -114,6 +127,7 @@ class ChannelController extends Controller
             'posts' => $posts,
             'stats_history' => $statsHistory,
             'period' => $period,
+            'max_stats_days' => $maxDays,
         ]);
     }
 }

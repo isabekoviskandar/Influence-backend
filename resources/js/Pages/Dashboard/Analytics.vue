@@ -7,6 +7,9 @@ const props = defineProps({
     stats_history: Array,
     summary: Object,
     period: String,
+    best_timings: Array,
+    user_plan: String,
+    max_stats_days: Number,
 });
 
 function formatNumber(num) {
@@ -49,9 +52,9 @@ const summaryCards = computed(() => [
 ]);
 
 const periods = [
-    { label: '7D', value: '7d' },
-    { label: '30D', value: '30d' },
-    { label: '90D', value: '90d' },
+    { label: '7D', value: '7d', days: 7 },
+    { label: '30D', value: '30d', days: 30 },
+    { label: '90D', value: '90d', days: 90 },
 ];
 </script>
 
@@ -69,9 +72,11 @@ const periods = [
                     v-for="p in periods"
                     :key="p.value"
                     @click="setPeriod(p.value)"
-                    class="px-3 py-1 rounded-[5px] text-[11px] font-semibold uppercase tracking-[0.04em] transition-all duration-[120ms]"
+                    :disabled="p.days > (max_stats_days || 7)"
+                    class="px-3 py-1 rounded-[5px] text-[11px] font-semibold uppercase tracking-[0.04em] transition-all duration-[120ms] disabled:opacity-30 disabled:cursor-not-allowed"
                     :class="period === p.value ? 'bg-[#6366f1] text-white' : 'text-[#4a4a50] hover:text-[#8a8a8f]'"
                     style="font-family: 'Geist Mono', monospace;"
+                    :title="p.days > max_stats_days ? 'Upgrade your plan to view more history' : ''"
                 >
                     {{ p.label }}
                 </button>
@@ -129,6 +134,44 @@ const periods = [
                 </div>
                 <div v-else class="h-[140px] flex items-center justify-center">
                     <p class="text-[12px] text-[#4a4a50]">Not enough data yet</p>
+                </div>
+            </div>
+
+            <!-- Best Timings widget -->
+            <div class="bg-[#111112] border border-[#222224] rounded-[10px] p-5 lg:col-span-2 mt-4">
+                <div class="flex items-center justify-between mb-4">
+                    <p class="text-[11px] font-medium uppercase tracking-[0.06em] text-[#4a4a50]">BEST TIME TO POST</p>
+                    <span v-if="user_plan === 'free'" class="px-2 py-0.5 rounded-full bg-[#18181b] border border-[#27272a] text-[9px] font-medium text-[#a1a1aa] tracking-[0.04em]">
+                        PRO/PREMIUM FEATURE
+                    </span>
+                </div>
+                
+                <div v-if="best_timings && best_timings.length > 0" class="flex flex-col gap-[2px]">
+                    <div v-for="(time, idx) in best_timings" :key="time.hour" 
+                         class="group flex items-center justify-between py-2.5 px-3 rounded-[8px] hover:bg-[#18181a] transition-all duration-200 border border-transparent hover:border-[#222224]">
+                        <div class="flex items-center gap-4">
+                            <div class="w-8 flex justify-center">
+                                <span v-if="idx === 0" class="text-[16px]">🔥</span>
+                                <span v-else-if="idx === 1" class="text-[16px]">⭐</span>
+                                <span v-else class="text-[13px] font-bold text-[#4a4a50] opacity-50" style="font-family: 'Geist Mono', monospace;">{{ idx + 1 }}</span>
+                            </div>
+                            <div class="bg-[#6366f1]/10 text-[#6366f1] text-[13px] font-bold py-1 px-3 rounded-[6px]" style="font-family: 'Geist Mono', monospace;">
+                                {{ time.hour }}
+                            </div>
+                            <span class="text-[12px] text-[#8a8a8f] group-hover:text-[#a0a0ab] transition-colors">Based on {{ time.total_posts }} posts</span>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[15px] text-[#f2f2f3] font-bold leading-none mb-1.5 flex items-center justify-end gap-1" style="font-family: 'Geist Mono', monospace;">
+                                {{ formatNumber(time.avg_views) }}
+                                <svg class="w-3 h-3 text-[#22c55e]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                            </p>
+                            <p class="text-[9px] text-[#4a4a50] uppercase tracking-[0.06em] font-medium">AVG VIEWS</p>
+                        </div>
+                    </div>
+                </div>
+                <div v-else class="h-[100px] flex flex-col items-center justify-center gap-2">
+                    <svg class="w-5 h-5 text-[#4a4a50]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <p class="text-[12px] text-[#4a4a50]">Not enough active posts to analyze.</p>
                 </div>
             </div>
         </div>

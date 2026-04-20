@@ -59,6 +59,30 @@ class ChannelMemberService
             $user = User::where('telegram_chat_id', $addedBy['id'])->first();
         }
 
+        // Limit check for new or re-activated channels
+        if ($user) {
+            $existingChannel = Channel::where('chat_id', (string) $chatId)->first();
+            $isNewActivation = ! $existingChannel || ! $existingChannel->is_active;
+
+            if ($isNewActivation) {
+                $currentActiveChannels = $user->channels()->where('is_active', true)->count();
+                if ($currentActiveChannels >= $user->max_channels) {
+                    $this->telegram->sendMessage([
+                        'chat_id' => $user->telegram_chat_id,
+                        'parse_mode' => 'HTML',
+                        'text' => implode("\n", [
+                            '🚫 <b>Limit Reached</b>',
+                            '',
+                            'Your current plan (<b>'.ucfirst($user->plan)."</b>) allows maximum <b>{$user->max_channels}</b> channel(s).",
+                            'Please upgrade your plan to add more channels.',
+                        ]),
+                    ]);
+
+                    return;
+                }
+            }
+        }
+
         // Upsert the channel record
         $channel = Channel::updateOrCreate(
             ['chat_id' => (string) $chatId],

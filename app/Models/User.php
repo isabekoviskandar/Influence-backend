@@ -74,4 +74,34 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->email === 'iskandarisabrkov@gmail.com';
     }
+
+    public function getMaxChannelsAttribute(): int
+    {
+        return match (strtolower($this->plan)) {
+            'free' => 1,
+            'pro' => 5,
+            'premium' => PHP_INT_MAX,
+            default => 1,
+        };
+    }
+
+    public function getMaxStatsDaysAttribute(): int
+    {
+        return match (strtolower($this->plan)) {
+            'free' => 7,
+            'pro' => 365,
+            'premium' => PHP_INT_MAX,
+            default => 7,
+        };
+    }
+
+    public function getSyncIntervalHoursAttribute(): int
+    {
+        return match (strtolower($this->plan)) {
+            'free' => 24,
+            'pro' => 6,
+            'premium' => 1,
+            default => 24,
+        };
+    }
 }

@@ -9,6 +9,7 @@ const props = defineProps({
     posts: Array,
     stats_history: Array,
     period: String,
+    max_stats_days: Number,
 });
 
 function formatNumber(n) {
@@ -180,10 +181,12 @@ const metrics = [
                                 </button>
                             </div>
                             <div class="flex p-1 bg-black/40 rounded-xl border border-white/5">
-                                <button v-for="p in ['7d', '30d', 'all']" :key="p" @click="setPeriod(p)"
-                                    class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
-                                    :class="period === p ? 'bg-white/10 text-white' : 'text-gray-500 shadow-none hover:text-white'">
-                                    {{ p }}
+                                <button v-for="p in [{v:'7d', d:7}, {v:'30d', d:30}, {v:'all', d:9999}]" :key="p.v" @click="setPeriod(p.v)"
+                                    :disabled="p.d > (max_stats_days || 7)"
+                                    class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                    :class="period === p.v ? 'bg-white/10 text-white' : 'text-gray-500 shadow-none hover:text-white disabled:hover:text-gray-500'"
+                                    :title="p.d > max_stats_days ? 'Upgrade your plan to view more history' : ''">
+                                    {{ p.v }}
                                 </button>
                             </div>
                         </div>

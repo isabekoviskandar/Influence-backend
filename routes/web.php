@@ -7,6 +7,7 @@ use App\Http\Controllers\Dashboard\ChannelController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\SettingsController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 // ─── Guest routes ───────────────────────────────────────────────────────────
 
@@ -36,6 +37,10 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard')->group(functio
     Route::patch('/settings', [SettingsController::class, 'update'])->name('.settings.update');
     Route::get('/settings/telegram-link', [SettingsController::class, 'refreshTelegramLink'])
         ->name('.settings.telegram-link');
+
+    Route::get('/upgrade', function () {
+        return Inertia::render('Dashboard/Upgrade');
+    })->name('.upgrade');
 });
 
 Route::post('/logout', [WebLoginController::class, 'destroy'])
