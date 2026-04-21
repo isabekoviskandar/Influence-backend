@@ -112,7 +112,7 @@
 
             <!-- CTAs -->
             <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
-                <a href="#" class="btn-primary w-full sm:w-auto">Start for free</a>
+                <a href="/register" class="btn-primary w-full sm:w-auto">Start for free</a>
                 <a href="#" class="flex items-center gap-2 text-muted hover:text-white transition-colors px-5">
                     See how it works <span class="text-lg">→</span>
                 </a>
@@ -408,7 +408,7 @@
 
                 <div class="text-center mt-10">
                     <p class="text-[13px] text-muted mb-6">
-                        This is real data from the Influence dashboard. <a href="#" class="text-accent hover:underline">Start tracking your own channel →</a>
+                        This is real data from the Influence dashboard. <a href="/register" class="text-accent hover:underline">Start tracking your own channel →</a>
                     </p>
                 </div>
             </div>
@@ -443,7 +443,7 @@
                         <li class="flex items-center gap-3"><span class="text-accent">✓</span> Views + reaction counts</li>
                         <li class="flex items-center gap-3"><span class="text-accent">✓</span> Magic link login</li>
                     </ul>
-                    <a href="#" class="btn-ghost border border-divider text-white text-[14px] w-full py-2 rounded-lg text-center font-medium mt-auto">Get started free</a>
+                    <a href="/register" class="btn-ghost border border-divider text-white text-[14px] w-full py-2 rounded-lg text-center font-medium mt-auto">Get started free</a>
                 </div>
 
                 <!-- Pro -->
@@ -462,7 +462,7 @@
                         <li class="flex items-center gap-3"><span class="text-accent">✓</span> Priority sync (every 5 min)</li>
                         <li class="flex items-center gap-3"><span class="text-accent">✓</span> PDF report export</li>
                     </ul>
-                    <a href="#" class="btn-primary w-full text-center py-2 rounded-lg font-medium mt-auto">Start Pro free</a>
+                    <a href="/register" class="btn-primary w-full text-center py-2 rounded-lg font-medium mt-auto">Start Pro free</a>
                 </div>
 
                 <!-- Agency -->
@@ -583,7 +583,7 @@
                 Add the bot in 10 seconds. Dashboard ready instantly.
             </p>
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <a href="#" class="bg-white text-accent font-bold px-8 py-3 rounded-lg hover:bg-white/90 transition-colors">Start free — no card needed</a>
+                <a href="/register" class="bg-white text-accent font-bold px-8 py-3 rounded-lg hover:bg-white/90 transition-colors">Start free — no card needed</a>
                 <a href="#" class="border border-white text-white font-bold px-8 py-3 rounded-lg hover:bg-white/10 transition-colors">View live demo →</a>
             </div>
             <p class="text-[12px] text-white/60 mt-8">Used by 200+ creators · Free plan available · Cancel anytime</p>
@@ -606,7 +606,7 @@
                 <div>
                     <h4 class="text-[14px] font-bold mb-6 text-white uppercase tracking-widest">Product</h4>
                     <ul class="space-y-4 text-[14px] text-muted">
-                        <li><a href="#" class="hover:text-white transition-colors">Dashboard</a></li>
+                        <li><a href="/dashboard" class="hover:text-white transition-colors">Dashboard</a></li>
                         <li><a href="#" class="hover:text-white transition-colors">Features</a></li>
                         <li><a href="#" class="hover:text-white transition-colors">Pricing</a></li>
                         <li><a href="#" class="hover:text-white transition-colors">Changelog</a></li>
