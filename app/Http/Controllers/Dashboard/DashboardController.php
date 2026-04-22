@@ -8,6 +8,8 @@ use App\Models\ChannelStat;
 use App\Models\Post;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -104,11 +106,19 @@ class DashboardController extends Controller
         ]);
 
         $botUsername = config('services.telegram.bot_username');
+        $telegramLink = null;
+
+        if (! $user->telegram_chat_id) {
+            $token = Str::random(32);
+            Cache::put("tg_link_token:{$token}", $user->id, now()->addMinutes(15));
+            $telegramLink = "https://t.me/{$botUsername}?start={$token}";
+        }
 
         return Inertia::render('Dashboard/Home', [
             'channels' => $channels,
             'stats' => $stats,
             'bot_username' => $botUsername,
+            'telegram_link' => $telegramLink,
             'filters' => [
                 'search' => $search,
                 'status' => $status,

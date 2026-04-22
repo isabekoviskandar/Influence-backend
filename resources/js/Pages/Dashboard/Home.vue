@@ -7,6 +7,7 @@ const props = defineProps({
     channels:      Array,
     stats:         Object,
     bot_username:  String,
+    telegram_link: String,
     filters:       Object,
 });
 
@@ -40,7 +41,9 @@ function handleSearch() {
     debounceTimeout = setTimeout(updateFilters, 300);
 }
 
-const addChannelUrl = `https://t.me/${props.bot_username}?start=add_channel`;
+const addChannelUrl = computed(() => {
+    return props.telegram_link || `https://t.me/${props.bot_username}?start=add_channel`;
+});
 
 function formatNumber(num) {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';

@@ -25,6 +25,13 @@ class StartCommandService
         $parts = explode(' ', $text, 2);
         $token = $parts[1] ?? null;
 
+        // Bypassing cache for special reserved tokens
+        if ($token === 'add_channel') {
+            $this->handleAddChannelPayload($chatId, $telegramUser);
+
+            return;
+        }
+
         if ($token) {
             $this->handleWithToken($chatId, $telegramUser, $token);
         } else {
@@ -138,5 +145,48 @@ class StartCommandService
 
         // Complete stranger — start the onboarding flow
         $this->onboarding->startOnboarding($chatId, $telegramUser);
+    }
+
+    private function handleAddChannelPayload(int $chatId, array $telegramUser): void
+    {
+        // Check if they're already linked
+        $user = User::where('telegram_chat_id', $telegramUser['id'])->first();
+
+        if (! $user) {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'parse_mode' => 'HTML',
+                'text' => implode("\n", [
+                    '👋 <b>Welcome!</b>',
+                    '',
+                    'To start tracking channels, you first need to link your Influence account.',
+                    '',
+                    'Please go to your <b>Dashboard > Settings</b> and click "Connect Telegram".',
+                ]),
+            ]);
+
+            return;
+        }
+
+        // Already linked — give simple instruction
+        $this->telegram->sendMessage([
+            'chat_id' => $chatId,
+            'parse_mode' => 'HTML',
+            'text' => implode("\n", [
+                "🚀 <b>Adding a new channel, {$user->name}?</b>",
+                '',
+                "It's easy! Just follow these steps:",
+                '',
+                "1. Add me (@{$this->getBotUsername()}) to your channel as an <b>Admin</b>.",
+                '2. Ensure I have permission to <b>Post Messages</b> (so I can see the feed).',
+                '',
+                "Once added, I'll start tracking your channel analytics automatically!",
+            ]),
+        ]);
+    }
+
+    private function getBotUsername(): string
+    {
+        return config('services.telegram.bot_username', 'publyc_bot');
     }
 }
