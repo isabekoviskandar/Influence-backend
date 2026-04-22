@@ -20,7 +20,7 @@ class DashboardController extends Controller
         $user = $request->user();
 
         // 1. Calculate base stats
-        $allChannels = Channel::where('user_id', $user->id)->get();
+        $allChannels = Channel::where('user_id', $user->id)->withCount('posts')->get();
         $totalMembers = $allChannels->sum('member_count');
         $totalViews = $allChannels->sum('avg_views');
 
@@ -130,7 +130,7 @@ class DashboardController extends Controller
     public function analytics(Request $request): Response
     {
         $user = $request->user();
-        $allChannels = Channel::where('user_id', $user->id)->get();
+        $allChannels = Channel::where('user_id', $user->id)->withCount('posts')->get();
 
         $channelId = $request->query('channel_id', 'all');
         if ($channelId !== 'all') {
@@ -213,23 +213,24 @@ class DashboardController extends Controller
             ->whereBetween('posted_at', [$previousStartDate, $startDate])
             ->count();
 
-        $curMembers = $statsData->last()['members'] ?? $channels->sum('member_count');
+        $curMembers = $allChannels->sum('member_count'); // Use model total instead of potentially empty daily history
         $prevMembers = $previousStats->sortByDesc('recorded_at')->unique('channel_id')->sum('member_count');
-        if ($prevMembers == 0) {
+        if ($prevMembers <= 0) {
             $prevMembers = $curMembers;
-        } // Fallback to avoid inflated numbers if no data
-
-        $curViews = $currentPosts->sum('views');
-        $prevViews = Post::whereIn('channel_id', $channelIds)->whereBetween('posted_at', [$previousStartDate, $startDate])->sum('views');
-
-        $curEngagement = $statsData->avg('engagement') ?? 0;
-        $prevEngagement = $previousStats->avg('engagement_rate') ?? 0;
-        if ($prevEngagement > 1000) {
-            $prevEngagement = 1000;
         }
 
+        $curViews = $currentPosts->sum('views');
+        if ($curViews <= 0) {
+            $curViews = $allChannels->sum('avg_views_recent');
+        } // Fallback to current reach if no new posts
+
+        $prevViews = Post::whereIn('channel_id', $channelIds)->whereBetween('posted_at', [$previousStartDate, $startDate])->sum('views');
+
+        $curEngagement = $allChannels->avg('engagement_rate') ?? 0;
+        $prevEngagement = $previousStats->avg('engagement_rate') ?? 0;
+
         $calcChange = function ($cur, $prev) {
-            if ($prev == 0) {
+            if ($prev <= 0) {
                 return $cur > 0 ? 100 : 0;
             }
 
@@ -243,7 +244,7 @@ class DashboardController extends Controller
             'views_change' => $calcChange($curViews, $prevViews),
             'avg_engagement' => round($curEngagement),
             'engagement_change' => $calcChange($curEngagement, $prevEngagement),
-            'total_posts' => $currentPosts->count(),
+            'total_posts' => $currentPosts->count() ?: $allChannels->sum('posts_count'), // Fallback to total tracked
             'posts_change' => $calcChange($currentPosts->count(), $previousPostsCount),
         ];
 

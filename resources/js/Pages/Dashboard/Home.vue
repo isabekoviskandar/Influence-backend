@@ -336,19 +336,6 @@ const statSparklines = [
                     </span>
                 </div>
 
-                <!-- Sync overlay -->
-                <div v-if="ch.sync_status === 'syncing'" class="absolute inset-x-0 bottom-0 bg-[#0a0a0b]/95 p-4 rounded-b-[10px]">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-[10px] font-semibold text-[#6366f1] uppercase tracking-[0.04em] animate-pulse" style="font-family: 'Geist Mono', monospace;">Syncing...</span>
-                        <span class="text-[10px] font-medium text-[#4a4a50]" style="font-family: 'Geist Mono', monospace;">{{ Math.round((ch.sync_current / ch.sync_total) * 100) }}%</span>
-                    </div>
-                    <div class="w-full h-1 bg-[#222224] rounded-full overflow-hidden">
-                        <div
-                            class="h-full bg-[#6366f1] rounded-full transition-all duration-1000 ease-out"
-                            :style="{ width: `${(ch.sync_current / ch.sync_total) * 100}%` }"
-                        ></div>
-                    </div>
-                </div>
             </Link>
         </div>
 

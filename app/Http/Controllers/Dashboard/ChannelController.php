@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Channel;
 use App\Models\ChannelStat;
 use App\Models\Post;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -46,88 +47,122 @@ class ChannelController extends Controller
 
     public function show(Request $request, Channel $channel): Response
     {
-        // Ensure the channel belongs to the authenticated user
-        abort_if($channel->user_id !== $request->user()->id, 403);
+        $user = $request->user();
+        abort_if($channel->user_id !== $user->id, 403);
 
-        $posts = $channel->posts()
-            ->latest('posted_at')
-            ->limit(50)
-            ->get()
-            ->map(function ($post) {
-                /** @var Post $post */
-                return [
-                    'id' => $post->id,
-                    'text' => $post->text ?? $post->caption,
-                    'media_type' => $post->media_type,
-                    'views' => $post->views,
-                    'forwards' => $post->forwards,
-                    'reactions' => $post->reactions,
-                    'posted_at' => $post->posted_at?->format('M d, H:i'),
-                    'posted_at_ago' => $post->posted_at?->diffForHumans(),
-                ];
-            });
+        // 1. Fetch Posts for metrics and list
+        $allPosts = $channel->posts()->latest('posted_at')->get();
+        $recentPosts = $allPosts->take(50);
+        /** @var Collection<int, Post> $displaySelection */
+        $displaySelection = $recentPosts->take(5);
+        $postsForDisplay = $displaySelection->map(fn (Post $p) => [
+            'id' => $p->id,
+            'text' => $p->text ?? $p->caption ?? '(media only)',
+            'media_type' => $p->media_type,
+            'views' => $p->views,
+            'reactions' => $p->reactions,
+            'posted_at_ago' => $p->posted_at?->diffForHumans(),
+            'is_above_avg' => ($p->views ?? 0) > $channel->avg_views,
+            'ratio' => $channel->avg_views > 0 ? min(round((($p->views ?? 0) / $channel->avg_views) * 100), 200) : 0,
+        ]);
 
-        $period = $request->query('period', '30d');
-        $maxDays = $request->user()->max_stats_days;
-
-        if ($period === 'all' && $maxDays < 1000) {
-            $period = '30d';
+        // 2. Calculate Insights Engine
+        // Best time to post
+        $dayMap = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        $heatmap = array_fill(0, 7, array_fill(0, 24, ['v' => 0, 'c' => 0]));
+        /** @var Post $p */
+        foreach ($allPosts as $p) {
+            $d = (int) $p->posted_at->format('N') - 1;
+            $h = (int) $p->posted_at->format('H');
+            $heatmap[$d][$h]['v'] += $p->views;
+            $heatmap[$d][$h]['c']++;
         }
+
+        $bestDay = 'None';
+        $bestHour = '00:00';
+        $maxAvg = -1;
+        foreach ($heatmap as $d => $hours) {
+            foreach ($hours as $h => $data) {
+                if ($data['c'] > 0) {
+                    $avg = $data['v'] / $data['c'];
+                    if ($avg > $maxAvg) {
+                        $maxAvg = $avg;
+                        $bestDay = $dayMap[$d];
+                        $bestHour = str_pad((string) $h, 2, '0', STR_PAD_LEFT).':00';
+                    }
+                }
+            }
+        }
+        $bestHourEnd = str_pad((string) (((int) explode(':', $bestHour)[0] + 2) % 24), 2, '0', STR_PAD_LEFT).':00';
+
+        // Most viewed post
+        $topPost = $allPosts->sortByDesc('views')->first();
+
+        // Consistency
+        $postsThisWeek = $allPosts->where('posted_at', '>=', now()->subDays(7))->count();
+
+        // Read rate
+        $readRate = $channel->member_count > 0 ? round(($channel->avg_views / $channel->member_count) * 100) : 0;
+
+        // 3. Stats History for Chart
+        $period = $request->query('period', '30d');
+        $maxDays = $user->max_stats_days;
         if ($period === '30d' && $maxDays < 30) {
             $period = '7d';
         }
 
-        $query = $channel->stats()->latest('recorded_at');
+        $daysRange = match ($period) {
+            '7d' => 7, 'all' => $maxDays, default => 30
+        };
+        if ($daysRange > 1000) {
+            $daysRange = 365;
+        } // Sanity limit for 'all' display performance
 
-        if ($period === '7d') {
-            $query->where('recorded_at', '>=', now()->subDays(7));
-            $limit = 7 * 24; // Arbitrary safe limit if syncing hourly
-        } elseif ($period === '30d') {
-            $query->where('recorded_at', '>=', now()->subDays(30));
-            $limit = 30 * 24;
-        } else {
-            // all
-            if ($maxDays !== PHP_INT_MAX) {
-                $query->where('recorded_at', '>=', now()->subDays($maxDays));
-                $limit = $maxDays * 24;
-            } else {
-                $limit = 1000;
-            }
-        }
+        /** @var Collection<int, ChannelStat> $statsCollection */
+        $statsCollection = $channel->stats()
+            ->where('recorded_at', '>=', now()->subDays($daysRange))
+            ->orderBy('recorded_at', 'asc')
+            ->get();
 
-        $statsHistory = $query->limit($limit)
-            ->get()
-            ->map(function ($s) {
-                /** @var ChannelStat $s */
-                return [
-                    'date' => $s->recorded_at?->format('M d') ?? $s->created_at->format('M d'),
-                    'member_count' => $s->member_count,
-                    'avg_views' => $s->avg_views,
-                ];
-            })
-            ->reverse()
-            ->values();
+        $statsHistory = $statsCollection->map(fn (ChannelStat $s) => [
+            'date' => $s->recorded_at?->format('M d'),
+            'member_count' => $s->member_count,
+            'avg_views' => $s->avg_views,
+        ]);
+
+        // 4. Final Data Assembly
+        $avgViewsRecent = $channel->avg_views_recent ?? $channel->avg_views;
+        $isViewsDiff = $avgViewsRecent != $channel->avg_views;
 
         return Inertia::render('Dashboard/Channel', [
             'channel' => [
                 'id' => $channel->id,
                 'title' => $channel->title,
                 'username' => $channel->username,
+                'category' => $channel->category ?? 'Uncategorized',
                 'member_count' => $channel->member_count,
                 'avg_views' => $channel->avg_views,
-                'avg_views_recent' => $channel->avg_views_recent,
-                'engagement_rate' => $channel->engagement_rate,
+                'avg_views_recent' => $avgViewsRecent,
+                'is_views_diff' => $isViewsDiff,
+                'engagement_rate' => round($channel->engagement_rate),
                 'potential_score' => $channel->potential_score,
                 'is_active' => $channel->is_active,
                 'sync_status' => $channel->sync_status,
-                'sync_current' => $channel->sync_current,
-                'sync_total' => $channel->sync_total,
                 'last_synced_at' => $channel->last_synced_at?->diffForHumans(),
+                'added_at_formatted' => $channel->added_at?->format('F Y'),
+                'total_posts_count' => $allPosts->count(),
+                'plan_limit_days' => $maxDays === PHP_INT_MAX ? 'Unlimited' : $maxDays.' days',
             ],
-            'posts' => $posts,
+            'insights' => [
+                'best_time' => $bestDay.' · '.$bestHour.'–'.$bestHourEnd,
+                'top_post_val' => ($topPost instanceof Post ? $topPost->views : 0).' views',
+                'top_post_ago' => ($topPost instanceof Post && $topPost->posted_at) ? $topPost->posted_at->diffForHumans() : 'N/A',
+                'consistency' => "$postsThisWeek posts this week",
+                'read_rate' => $readRate.'%',
+            ],
+            'posts' => $postsForDisplay,
             'stats_history' => $statsHistory,
             'period' => $period,
-            'max_stats_days' => $maxDays,
         ]);
     }
 }
