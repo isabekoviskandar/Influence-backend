@@ -65,16 +65,25 @@ class StartCommandService
         // Check if this Telegram account is already linked to another user
         $conflict = User::where('telegram_chat_id', $telegramUser['id'])
             ->where('id', '!=', $user->id)
-            ->exists();
+            ->first();
 
         if ($conflict) {
-            $this->telegram->sendMessage([
-                'chat_id' => $chatId,
-                'parse_mode' => 'HTML',
-                'text' => 'This Telegram account is already linked to another Influence account.',
+            Log::info('Telegram link conflict: transferring link', [
+                'from_user' => $conflict->id,
+                'to_user' => $user->id,
+                'telegram_id' => $telegramUser['id'],
             ]);
 
-            return;
+            // Unlink the old account to maintain uniqueness
+            $conflict->update([
+                'telegram_chat_id' => null,
+                'telegram_username' => null,
+            ]);
+
+            // Optional: If User B (bot account) has a phone and User A doesn't, migrate the phone
+            if ($conflict->phone && ! $user->phone) {
+                $user->phone = $conflict->phone;
+            }
         }
 
         // Link the accounts

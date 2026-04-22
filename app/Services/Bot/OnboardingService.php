@@ -145,7 +145,17 @@ class OnboardingService
         $existingUser = User::where('phone', $phone)->first();
 
         if ($existingUser) {
-            // Link Telegram to existing account instead of creating duplicate
+            // Check if this Telegram ID is already used by someone else
+            $conflict = User::where('telegram_chat_id', (string) $chatId)
+                ->where('id', '!=', $existingUser->id)
+                ->first();
+
+            if ($conflict) {
+                // Orphan the conflict user (which was likely a dummy account)
+                $conflict->update(['telegram_chat_id' => null, 'telegram_username' => null]);
+            }
+
+            // Link Telegram to existing account
             $existingUser->update([
                 'telegram_chat_id' => (string) $chatId,
                 'telegram_username' => $tgUser,
