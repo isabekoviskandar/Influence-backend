@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RegisterController;
@@ -37,6 +38,13 @@ Route::prefix('v1')->group(function () {
         Route::post('register', [AuthController::class, 'register']);
         Route::post('login', [AuthController::class, 'login']);
         Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+    });
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::prefix('user')->group(function () {
+            Route::get('profile', [UserController::class, 'profile']);
+            Route::put('update', [UserController::class, 'update']);
+        });
     });
 
 });
