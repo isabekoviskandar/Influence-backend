@@ -39,7 +39,7 @@ class FetchHistoricalPosts implements ShouldQueue
 
     public function handle(ChannelPostService $postService): void
     {
-        Log::info('Historical sync chunk: '.($this->nextId ?? 'initial'), [
+        Log::channel('telegram')->info('Historical sync chunk: '.($this->nextId ?? 'initial'), [
             'channel_id' => $this->channel->id,
             'chat_id' => $this->channel->chat_id,
         ]);
@@ -49,14 +49,15 @@ class FetchHistoricalPosts implements ShouldQueue
         $botToken = config('services.telegram.bot_token');
 
         if (! $apiId || ! $apiHash || ! $botToken) {
-            Log::error('Telegram config missing');
+            Log::channel('telegram')->error('Telegram config missing');
 
             return;
         }
 
         try {
             $settings = new Settings;
-            $settings->getAppInfo()->setApiId((int) $apiId)->setApiHash($apiHash);
+            $settings->getAppInfo()->setApiId((int) $apiId);
+            $settings->getAppInfo()->setApiHash($apiHash);
             $settings->getLogger()
                 ->setType(Logger::LOGGER_FILE)
                 ->setExtra(storage_path('logs/madeline.log'))
@@ -66,44 +67,35 @@ class FetchHistoricalPosts implements ShouldQueue
             if (! file_exists($sessionDir)) {
                 mkdir($sessionDir, 0775, true);
             }
-            $sessionPath = $sessionDir.'/bot_session_sync.madeline';
-            $MadelineProto = new API($sessionPath, $settings);
 
-            // Login
-            try {
-                $MadelineProto->getSelf();
-            } catch (\Throwable $e) {
-                $MadelineProto->botLogin($botToken);
-            }
+            $MadelineProto = new API($sessionDir.'/bot_session_sync.madeline', $settings);
+            $MadelineProto->botLogin($botToken);
 
-            // Resolve peer — try username first (more reliable for bots)
-            $peer = null;
+            $chatId = $this->channel->chat_id;
+            $intId = (int) $chatId;
             $usernamePeer = $this->channel->username ? '@'.$this->channel->username : null;
+            $peer = null;
 
-            if ($usernamePeer) {
-                try {
-                    $MadelineProto->getInfo($usernamePeer);
-                    $peer = $usernamePeer;
-                } catch (\Throwable $e) {
-                    Log::warning('Username peer resolve failed', [
-                        'channel_id' => $this->channel->id,
-                        'username' => $usernamePeer,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
+            try {
+                $MadelineProto->getInfo($intId);
+                $peer = $intId;
+            } catch (\Exception $e) {
+                if ($usernamePeer) {
+                    Log::channel('telegram')->info('ID resolution failed, trying username fallback', ['peer' => $usernamePeer]);
+                    try {
+                        $MadelineProto->getInfo($usernamePeer);
+                        $peer = $usernamePeer;
+                    } catch (\Exception $e2) {
+                        Log::channel('telegram')->error('Peer resolve failed completely', [
+                            'channel_id' => $this->channel->id,
+                            'error' => $e2->getMessage(),
+                        ]);
+                        $this->channel->update(['sync_status' => 'failed', 'sync_error' => $e2->getMessage()]);
 
-            // Fallback to numeric ID
-            if ($peer === null) {
-                try {
-                    $intId = (int) $this->channel->chat_id;
-                    $MadelineProto->getInfo($intId);
-                    $peer = $intId;
-                } catch (\Throwable $e) {
-                    Log::error('Peer resolve failed completely', [
-                        'channel_id' => $this->channel->id,
-                        'error' => $e->getMessage(),
-                    ]);
+                        return;
+                    }
+                } else {
+                    $this->channel->update(['sync_status' => 'failed', 'sync_error' => $e->getMessage()]);
 
                     return;
                 }
@@ -113,33 +105,16 @@ class FetchHistoricalPosts implements ShouldQueue
 
             if ($currentMaxId === null) {
                 try {
-                    $fullChannel = $MadelineProto->getInfo($peer);
-                    $topMessage = $fullChannel['Chat']['top_message'] ?? null;
-
-                    // fallback: get recent messages to find top ID
-                    if (! $topMessage) {
-                        $history = $MadelineProto->messages->getHistory([
-                            'peer' => $peer,
-                            'offset_id' => 0,
-                            'offset_date' => 0,
-                            'add_offset' => 0,
-                            'limit' => 1,
-                            'max_id' => 0,
-                            'min_id' => 0,
-                            'hash' => 0,
-                        ]);
-                        $topMessage = $history['messages'][0]['id'] ?? 0;
-                    }
-
-                    $currentMaxId = (int) $topMessage;
+                    $pwrChat = $MadelineProto->getPwrChat($peer);
+                    $currentMaxId = (int) ($pwrChat['top_message'] ?? 0);
                 } catch (\Throwable $e) {
-                    Log::error('Failed to get top message', ['error' => $e->getMessage()]);
+                    Log::channel('telegram')->error('Failed to get top message', ['error' => $e->getMessage()]);
 
                     return;
                 }
 
                 if ($currentMaxId === 0) {
-                    Log::error('Top message is 0, channel may be empty');
+                    Log::channel('telegram')->error('Top message is 0, channel may be empty');
 
                     return;
                 }
@@ -148,6 +123,11 @@ class FetchHistoricalPosts implements ShouldQueue
                     'sync_status' => 'syncing',
                     'sync_total' => $currentMaxId,
                     'sync_current' => 0,
+                ]);
+
+                Log::channel('telegram')->info('Starting historical sync', [
+                    'channel_id' => $this->channel->id,
+                    'total_messages' => $currentMaxId,
                 ]);
             }
 
@@ -162,6 +142,7 @@ class FetchHistoricalPosts implements ShouldQueue
             ]);
 
             $messages = $messagesResult['messages'] ?? [];
+            $saved = 0;
 
             foreach ($messages as $msg) {
                 if (! isset($msg['_']) || $msg['_'] !== 'message') {
@@ -176,12 +157,19 @@ class FetchHistoricalPosts implements ShouldQueue
                     'views' => $msg['views'] ?? 0,
                     'forwards' => $msg['forwards'] ?? 0,
                 ], false);
+
+                $saved++;
             }
 
-            $syncedCount = $currentMaxId - $batchStart;
-            $this->channel->update([
-                'sync_current' => min($currentMaxId, $syncedCount),
+            Log::channel('telegram')->info('Batch saved', [
+                'channel_id' => $this->channel->id,
+                'batch_start' => $batchStart,
+                'batch_end' => $targetId,
+                'saved' => $saved,
             ]);
+
+            $syncedCount = $currentMaxId - $batchStart;
+            $this->channel->update(['sync_current' => min($currentMaxId, $syncedCount)]);
 
             if ($batchStart > 1) {
                 self::dispatch($this->channel, $batchStart - 1, $currentMaxId)
@@ -189,19 +177,15 @@ class FetchHistoricalPosts implements ShouldQueue
                     ->onQueue('default');
             } else {
                 $this->channel->update(['sync_status' => 'completed']);
-                Log::info('Historical sync completed', ['channel_id' => $this->channel->id]);
+                Log::channel('telegram')->info('Historical sync completed', ['channel_id' => $this->channel->id]);
             }
+
         } catch (\Throwable $e) {
-            Log::error('FetchHistoricalPosts failed', [
+            Log::channel('telegram')->error('FetchHistoricalPosts failed', [
                 'channel_id' => $this->channel->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
-
-            $this->channel->update([
-                'sync_status' => 'failed',
-                'sync_error' => $e->getMessage(),
-            ]);
+            $this->channel->update(['sync_status' => 'failed', 'sync_error' => $e->getMessage()]);
         }
     }
 }
