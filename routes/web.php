@@ -21,8 +21,6 @@ Route::middleware('guest')->group(function () {
     Route::get('/magic-login/{token}', [MagicLoginController::class, 'handle'])->name('magic-login');
 });
 
-// ─── Authenticated dashboard routes ─────────────────────────────────────────
-
 Route::middleware('auth')->prefix('dashboard')->name('dashboard')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('');
 
