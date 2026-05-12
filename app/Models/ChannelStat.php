@@ -25,6 +25,7 @@ class ChannelStat extends Model
             'channel_id',
             'member_count',
             'avg_views',
+            'avg_views_recent',
             'post_count',
             'engagement_rate',
             'growth_percent',
@@ -40,6 +41,13 @@ class ChannelStat extends Model
     protected function casts(): array
     {
         return [
+            'member_count' => 'integer',
+            'avg_views' => 'integer',
+            'avg_views_recent' => 'integer',
+            'post_count' => 'integer',
+            'engagement_rate' => 'decimal:2',
+            'growth_percent' => 'decimal:2',
+            'potential_score' => 'integer',
             'recorded_at' => 'datetime',
         ];
     }

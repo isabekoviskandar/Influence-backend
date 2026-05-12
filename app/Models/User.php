@@ -55,6 +55,13 @@ class User extends Authenticatable implements FilamentUser
             'bio',
             'avatar',
             'plan',
+            'is_confirmed',
+            'otp_expires_at',
+        ];
+
+    protected $casts =
+        [
+            'password' => 'hashed',
         ];
 
     public function channels(): HasMany
