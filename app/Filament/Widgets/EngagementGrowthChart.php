@@ -8,6 +8,8 @@ use Filament\Widgets\ChartWidget;
 
 class EngagementGrowthChart extends ChartWidget
 {
+    protected static ?int $sort = 0;
+
     protected ?string $heading = 'Views Expansion';
 
     protected function getData(): array
@@ -18,17 +20,25 @@ class EngagementGrowthChart extends ChartWidget
             ->orderBy('date')
             ->get();
 
+        $labels = $data->pluck('date')
+            ->map(fn ($date) => Carbon::parse($date)->format('M d'))
+            ->toArray();
+
+        $values = $data->pluck('aggregate')
+            ->map(fn ($value) => is_numeric($value) ? (float) $value : 0)
+            ->toArray();
+
         return [
             'datasets' => [
                 [
                     'label' => 'Average Channel Views',
-                    'data' => $data->pluck('aggregate')->toArray(),
+                    'data' => $values,
                     'fill' => 'start',
                     'borderColor' => '#3b82f6', // blue line
                     'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
                 ],
             ],
-            'labels' => $data->pluck('date')->map(fn ($date) => Carbon::parse($date)->format('M d'))->toArray(),
+            'labels' => $labels,
         ];
     }
 

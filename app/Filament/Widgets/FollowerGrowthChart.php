@@ -8,6 +8,8 @@ use Filament\Widgets\ChartWidget;
 
 class FollowerGrowthChart extends ChartWidget
 {
+    protected static ?int $sort = 0;
+
     protected ?string $heading = 'Follower Growth Chart';
 
     protected function getData(): array
@@ -18,17 +20,25 @@ class FollowerGrowthChart extends ChartWidget
             ->orderBy('date')
             ->get();
 
+        $labels = $data->pluck('date')
+            ->map(fn ($date) => Carbon::parse($date)->format('M d'))
+            ->toArray();
+
+        $values = $data->pluck('aggregate')
+            ->map(fn ($value) => is_numeric($value) ? (float) $value : 0)
+            ->toArray();
+
         return [
             'datasets' => [
                 [
                     'label' => 'Total Network Followers',
-                    'data' => $data->pluck('aggregate')->toArray(),
+                    'data' => $values,
                     'fill' => 'start',
                     'borderColor' => '#10b981', // green line
                     'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
                 ],
             ],
-            'labels' => $data->pluck('date')->map(fn ($date) => Carbon::parse($date)->format('M d'))->toArray(),
+            'labels' => $labels,
         ];
     }
 
