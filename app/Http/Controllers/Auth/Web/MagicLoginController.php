@@ -25,6 +25,7 @@ class MagicLoginController extends Controller
         }
 
         Auth::login($user);
+        $request->session()->regenerate();
 
         Cache::forget("dashboard_login_token:{$token}");
 

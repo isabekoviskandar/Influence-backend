@@ -20,7 +20,7 @@ class DashboardController extends Controller
         $user = $request->user();
 
         // 1. Calculate base stats
-        $allChannels = Channel::where('user_id', $user->id)->withCount('posts')->get();
+        $allChannels = Channel::withCount('posts')->get();
         $totalMembers = $allChannels->sum('member_count');
         $totalViews = $allChannels->sum('avg_views');
 

@@ -11,9 +11,6 @@ use App\Http\Controllers\TelegramLinkController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-// ─── Public routes ──────────────────────────────────────────────────────────
-
-// ─── Public routes ──────────────────────────────────────────────────────────
 Route::middleware('throttle:auth')->group(function () {
     Route::post('/register', RegisterController::class);
     Route::post('/login', LoginController::class);
