@@ -6,13 +6,11 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Bot\TelegramWebhookController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TelegramLinkController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-// ─── Public routes ──────────────────────────────────────────────────────────
-
-// ─── Public routes ──────────────────────────────────────────────────────────
 Route::middleware('throttle:auth')->group(function () {
     Route::post('/register', RegisterController::class);
     Route::post('/login', LoginController::class);
@@ -45,5 +43,10 @@ Route::prefix('v1')->group(function () {
             Route::get('profile', [UserController::class, 'profile']);
             Route::put('update', [UserController::class, 'update']);
         });
+
+        Route::prefix('dashboard')->group(function () {
+            Route::get('metrics', [DashboardController::class, 'calculateMetrics']);
+        });
     });
+
 });
