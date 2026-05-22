@@ -30,4 +30,14 @@ class AuthController extends Controller
     {
         return $this->service->logout();
     }
+
+    public function sendOtp(Request $request)
+    {
+        return $this->service->sendOtp($request);
+    }
+
+    public function confirmOtp(Request $request)
+    {
+        return $this->service->confirmOtp($request);
+    }
 }

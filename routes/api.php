@@ -35,6 +35,8 @@ Route::prefix('v1')->group(function () {
     Route::prefix('auth')->middleware('throttle:auth')->group(function () {
         Route::post('register', [AuthController::class, 'register']);
         Route::post('login', [AuthController::class, 'login']);
+        Route::post('send-otp', [AuthController::class, 'sendOtp']);
+        Route::post('confirm-otp', [AuthController::class, 'confirmOtp']);
         Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
     });
 

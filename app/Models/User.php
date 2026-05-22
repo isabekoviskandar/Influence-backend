@@ -43,26 +43,24 @@ class User extends Authenticatable implements FilamentUser
         ];
     }
 
-    protected $fillable =
-        [
-            'username',
-            'email',
-            'phone',
-            'password',
-            'otp',
-            'telegram_chat_id',
-            'telegram_username',
-            'bio',
-            'avatar',
-            'plan',
-            'is_confirmed',
-            'otp_expires_at',
-        ];
+    protected $fillable = [
+        'username',
+        'email',
+        'phone',
+        'password',
+        'otp',
+        'telegram_chat_id',
+        'telegram_username',
+        'bio',
+        'avatar',
+        'plan',
+        'is_confirmed',
+        'otp_expires_at',
+    ];
 
-    protected $casts =
-        [
-            'password' => 'hashed',
-        ];
+    protected $casts = [
+        'password' => 'hashed',
+    ];
 
     public function channels(): HasMany
     {
@@ -71,10 +69,8 @@ class User extends Authenticatable implements FilamentUser
 
     public function getNameAttribute(): string
     {
-        return $this->username
-            ?? $this->telegram_username
-            ?? $this->email
-            ?? 'User';
+        return $this->username ??
+            ($this->telegram_username ?? ($this->email ?? 'User'));
     }
 
     public function canAccessPanel(Panel $panel): bool
