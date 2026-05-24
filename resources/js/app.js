@@ -14,9 +14,11 @@ createInertiaApp({
     setup({ el, App, props, plugin }) {
         if (!el) return;
         
+        const ziggy = window.Ziggy || props.initialPage.props.ziggy || {};
+        
         createApp({ render: () => h(App, props) })
             .use(plugin)
-            .use(ZiggyVue, window.Ziggy)
+            .use(ZiggyVue, ziggy)  // ← window.Ziggy ishlamasa fallback
             .mount(el);
     },
     progress: {
