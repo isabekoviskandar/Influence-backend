@@ -4,23 +4,17 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Tighten\Ziggy\Ziggy;
 
 class HandleInertiaRequests extends Middleware
 {
-    /** The root template that is loaded on the first page visit. */
     protected $rootView = 'app';
 
-    /** Determine the current asset version. */
     public function version(Request $request): ?string
     {
         return parent::version($request);
     }
 
-    /**
-     * Define the shared props sent to every Inertia page.
-     *
-     * @return array<string, mixed>
-     */
     public function share(Request $request): array
     {
         return array_merge(parent::share($request), [
@@ -35,12 +29,17 @@ class HandleInertiaRequests extends Middleware
                     'telegram_username' => $request->user()->telegram_username,
                     'telegram_linked' => ! is_null($request->user()->telegram_chat_id),
                     'avatar' => $request->user()->avatar,
-                    'active_channels_count' => $request->user()->channels()->where('is_active', true)->count(),
+                    'active_channels_count' => $request->user()->channels()
+                        ->where('is_active', true)->count(),
                 ] : null,
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+            ],
+            'ziggy' => fn () => [
+                ...(new Ziggy)->toArray(),
+                'location' => $request->url(),
             ],
         ]);
     }
