@@ -53,7 +53,7 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::prefix('blog')->group(function () {
-        Route::get('/', [BlogController::class, 'index']);
+        Route::get('list', [BlogController::class, 'index']);
     });
 
 });

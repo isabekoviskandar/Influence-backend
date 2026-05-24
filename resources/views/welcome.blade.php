@@ -3,72 +3,160 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Influence — Telegram Analytics for Creators</title>
-    <meta name="description" content="Know exactly how your channel is performing. Influence tracks views, reactions, and growth across your Telegram channels automatically.">
+    <title>Influence - Telegram Analytics for Uzbekistan</title>
+    <meta name="description" content="Influence tracks Telegram views, reactions, posting times, and growth for channels in Uzbekistan.">
 
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono&display=swap" rel="stylesheet">
 
-    <!-- Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
-        /* Backdrop blur for sticky nav */
+        :root {
+            --bg-page: #0a0a0f;
+            --bg-surface: #111118;
+            --bg-surface-raised: #15151f;
+            --border: #1e1e2e;
+            --text: #f6f7fb;
+            --muted: #9090a8;
+            --label: #a1a1aa;
+            --accent: #6366f1;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --max-content-width: 1100px;
+            --section-padding: 80px;
+            --radius: 8px;
+        }
+
+        body {
+            background:
+                radial-gradient(circle at 50% -10%, rgba(99, 102, 241, 0.14), transparent 34rem),
+                linear-gradient(180deg, #0a0a0f 0%, #0c0c12 48%, #0a0a0f 100%);
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.32;
+            background-image:
+                radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.13) 1px, transparent 0);
+            background-size: 18px 18px;
+            mix-blend-mode: overlay;
+        }
+
+        body > * {
+            position: relative;
+            z-index: 1;
+        }
+
         .nav-scrolled {
-            background-color: rgba(9, 9, 11, 0.8) !important;
-            backdrop-filter: blur(8px);
+            background-color: rgba(10, 10, 15, 0.86) !important;
+            backdrop-filter: blur(12px);
         }
 
-        /* Floating Hero Animation */
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-8px); }
-            100% { transform: translateY(0px); }
-        }
-        .hero-float {
-            animation: float 3s ease-in-out infinite;
+        .section-label {
+            color: var(--label);
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            margin-bottom: 16px;
+            text-transform: uppercase;
         }
 
-        /* Heatmap Grid */
+        .surface-band {
+            background: rgba(17, 17, 24, 0.58);
+            border-bottom: 1px solid var(--border);
+            border-top: 1px solid var(--border);
+        }
+
+        .metric-card,
+        .feature-block,
+        .mockup-panel {
+            background: linear-gradient(180deg, rgba(21, 21, 31, 0.9), rgba(17, 17, 24, 0.96));
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .feature-block {
+            display: grid;
+            gap: 36px;
+            grid-template-columns: minmax(0, 1.12fr) minmax(280px, 0.88fr);
+            padding: 28px;
+        }
+
+        .feature-block:nth-child(even) {
+            grid-template-columns: minmax(280px, 0.88fr) minmax(0, 1.12fr);
+        }
+
+        .feature-block:nth-child(even) .feature-visual {
+            order: 2;
+        }
+
         .heatmap-grid {
             display: grid;
-            grid-template-columns: repeat(24, 1fr);
-            gap: 2px;
-        }
-        .heatmap-cell {
-            aspect-ratio: 1;
-            background-color: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 2px;
-        }
-        .heatmap-cell.active {
-            background-color: var(--accent);
-            box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+            gap: 3px;
+            grid-template-columns: repeat(24, minmax(10px, 1fr));
         }
 
-        /* Dashed Line Connector */
+        .heatmap-cell {
+            aspect-ratio: 1;
+            background: #161622;
+            border: 1px solid rgba(30, 30, 46, 0.9);
+            border-radius: 2px;
+        }
+
+        .heatmap-cell.low { background: rgba(99, 102, 241, 0.18); }
+        .heatmap-cell.mid { background: rgba(99, 102, 241, 0.42); }
+        .heatmap-cell.hot {
+            background: rgba(99, 102, 241, 0.92);
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.38);
+        }
+
+        .mock-window-bar {
+            border-bottom: 1px solid var(--border);
+            background: rgba(10, 10, 15, 0.55);
+        }
+
+        .sparkline {
+            width: 100%;
+            height: 76px;
+            overflow: visible;
+        }
+
+        .footer-cta {
+            background:
+                radial-gradient(circle at 50% 45%, rgba(99, 102, 241, 0.15), transparent 31rem),
+                #0a0a0f;
+            border-top: 1px solid var(--border);
+        }
+
         .step-connector {
             flex-grow: 1;
             height: 1px;
-            border-top: 1px dashed var(--accent);
-            margin: 0 20px;
-            margin-top: 16px;
+            border-top: 1px dashed rgba(99, 102, 241, 0.55);
+            margin: 16px 20px 0;
         }
 
-        /* Social Proof Overlap */
-        .avatar-group .avatar {
-            margin-left: -8px;
-            border: 2px solid var(--bg-page);
+        @media (max-width: 900px) {
+            .feature-block,
+            .feature-block:nth-child(even) {
+                grid-template-columns: 1fr;
+            }
+
+            .feature-block:nth-child(even) .feature-visual {
+                order: 0;
+            }
         }
-        .avatar-group .avatar:first-child { margin-left: 0; }
     </style>
 </head>
 <body class="antialiased">
-
-    <!-- SECTION 1 — NAVBAR -->
-    <nav class="sticky top-0 z-50 w-full bg-page/80 backdrop-blur-md border-b border-divider">
+    <nav id="navbar" class="sticky top-0 z-50 w-full bg-bg-page/80 backdrop-blur-md border-b border-divider">
         <div class="max-w-[1100px] mx-auto px-6 h-16 flex items-center justify-between">
             <div class="flex items-center gap-8">
                 <div class="flex items-center gap-2 font-semibold">
@@ -83,122 +171,105 @@
                     <a href="#docs" class="hover:text-text transition-colors">Docs</a>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3 sm:gap-4">
+                <div class="hidden sm:inline-flex items-center rounded-lg border border-divider bg-surface p-1 text-[12px] font-semibold">
+                    <button class="rounded-md bg-accent px-2.5 py-1 text-white">UZ</button>
+                    <button class="px-2.5 py-1 text-muted hover:text-white">EN</button>
+                </div>
                 <a href="/login" class="text-sm font-medium hover:text-accent transition-colors hidden sm:block">Sign in</a>
                 <a href="/register" class="btn-primary">Start free</a>
             </div>
         </div>
     </nav>
 
-    <!-- SECTION 2 — HERO -->
-    <section class="section-padding pt-[160px] relative overflow-hidden">
+    <section class="section-padding pt-[128px] relative overflow-hidden">
         <div class="container-custom text-center">
-            <!-- Badge -->
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/30 bg-accent/10 text-accent text-[12px] font-medium mb-8">
                 <span class="relative flex h-2 w-2">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
                     <span class="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
                 </span>
-                Built for Telegram Creators
+                Built for Telegram channels in Uzbekistan
             </div>
 
-            <!-- Heading -->
             <h1 class="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-                Telegram analytics <br class="hidden md:block"> for elite creators.
+                Telegram analytics <br class="hidden md:block"> for serious channels.
             </h1>
             <p class="text-base md:text-xl text-muted max-w-2xl mx-auto mb-10 px-4">
-                Influence tracks views, reactions, and growth across your Telegram channels — automatically. Add the bot, open the dashboard.
+                O'zbekistonning 500+ Telegram kanali allaqachon ulangan. Influence views, reactions, posting times, and growth signalsni avtomatik kuzatadi.
             </p>
 
-            <!-- CTAs -->
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mb-12">
                 <a href="/register" class="btn-primary w-full sm:w-auto">Start for free</a>
-                <a href="#" class="flex items-center gap-2 text-muted hover:text-white transition-colors px-5">
-                    See how it works <span class="text-lg">→</span>
+                <a href="#examples" class="flex items-center gap-2 text-muted hover:text-white transition-colors px-5">
+                    See live metrics <span aria-hidden="true">-></span>
                 </a>
             </div>
 
-            <!-- Social Proof -->
-            <div class="flex items-center justify-center gap-3 mb-20">
-                <div class="flex avatar-group">
-                    <div class="w-8 h-8 rounded-full bg-[#3b82f6] flex items-center justify-center text-[10px] font-bold avatar">JD</div>
-                    <div class="w-8 h-8 rounded-full bg-[#ef4444] flex items-center justify-center text-[10px] font-bold avatar">AM</div>
-                    <div class="w-8 h-8 rounded-full bg-[#10b981] flex items-center justify-center text-[10px] font-bold avatar">SK</div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-[760px] mx-auto mb-14 text-left">
+                <div class="metric-card p-5">
+                    <div class="font-mono text-2xl font-bold text-white">847</div>
+                    <div class="text-[13px] text-muted mt-1">ta kanal ulangan</div>
                 </div>
-                <span class="text-[14px] text-muted">Joined by 200+ Telegram creators</span>
+                <div class="metric-card p-5">
+                    <div class="font-mono text-2xl font-bold text-white">2.3M</div>
+                    <div class="text-[13px] text-muted mt-1">post tahlil qilindi</div>
+                </div>
+                <div class="metric-card p-5">
+                    <div class="font-mono text-2xl font-bold text-white">+34%</div>
+                    <div class="text-[13px] text-muted mt-1">o'rtacha engagement oshdi</div>
+                </div>
             </div>
 
-            <!-- Hero Visual -->
-            <div class="relative max-w-4xl mx-auto px-4 mt-20">
+            <div class="relative max-w-4xl mx-auto px-4">
                 <div class="absolute inset-0 bg-accent/20 blur-[120px] rounded-full"></div>
-                <div class="relative bg-surface border border-divider rounded-xl overflow-hidden shadow-2xl floating">
-                    <img src="/images/hero-dashboard.png" alt="Influence Dashboard" class="w-full h-auto opacity-90 scale-105 md:scale-100">
+                <div class="relative bg-surface border border-divider rounded-xl overflow-hidden shadow-2xl">
+                    <img src="/images/hero-dashboard.png" alt="Influence Dashboard" class="w-full h-auto opacity-95 scale-105 md:scale-100">
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- SECTION 3 — LOGO BAR -->
-    <section class="border-y border-divider py-12">
+    <section class="border-y border-divider py-10">
         <div class="container-custom">
-            <p class="text-[11px] font-bold text-muted tracking-[0.1em] text-center mb-8">TRUSTED BY CREATORS IN</p>
-            <div class="flex flex-wrap justify-center gap-4">
-                <span class="px-4 py-2 border border-divider rounded-full text-muted text-sm hover:border-accent hover:text-white transition-all cursor-default">Tech & Dev</span>
-                <span class="px-4 py-2 border border-divider rounded-full text-muted text-sm hover:border-accent hover:text-white transition-all cursor-default">Finance</span>
+            <p class="section-label text-center">POPULAR CHANNEL SEGMENTS</p>
+            <div class="flex flex-wrap justify-center gap-3">
                 <span class="px-4 py-2 border border-divider rounded-full text-muted text-sm hover:border-accent hover:text-white transition-all cursor-default">News</span>
-                <span class="px-4 py-2 border border-divider rounded-full text-muted text-sm hover:border-accent hover:text-white transition-all cursor-default">Lifestyle</span>
-                <span class="px-4 py-2 border border-divider rounded-full text-muted text-sm hover:border-accent hover:text-white transition-all cursor-default">Gaming</span>
                 <span class="px-4 py-2 border border-divider rounded-full text-muted text-sm hover:border-accent hover:text-white transition-all cursor-default">Education</span>
+                <span class="px-4 py-2 border border-divider rounded-full text-muted text-sm hover:border-accent hover:text-white transition-all cursor-default">Finance</span>
                 <span class="px-4 py-2 border border-divider rounded-full text-muted text-sm hover:border-accent hover:text-white transition-all cursor-default">Marketing</span>
+                <span class="px-4 py-2 border border-divider rounded-full text-muted text-sm hover:border-accent hover:text-white transition-all cursor-default">Tech</span>
+                <span class="px-4 py-2 border border-divider rounded-full text-muted text-sm hover:border-accent hover:text-white transition-all cursor-default">Lifestyle</span>
             </div>
         </div>
     </section>
 
-    <!-- SECTION 4 — PROBLEM → SOLUTION -->
     <section class="section-padding">
-        <div class="container-custom grid lg:grid-cols-2 gap-20 items-center">
+        <div class="container-custom grid lg:grid-cols-2 gap-14 items-center">
             <div>
-                <span class="text-accent text-[12px] font-bold tracking-[0.1em] mb-4 block">WHY INFLUENCE</span>
-                <h2 class="text-[36px] font-semibold mb-6">Stop guessing. Start knowing.</h2>
-                <p class="text-muted mb-10">
-                    Most Telegram creators check views manually, one post at a time. There's no way to see trends, compare performance, or understand what actually grows a channel. Influence fixes that.
+                <span class="section-label">WHY INFLUENCE</span>
+                <h2 class="text-[34px] md:text-[38px] font-semibold mb-6">Stop guessing. Start knowing.</h2>
+                <p class="text-muted mb-8">
+                    Most Telegram teams still check views manually, one post at a time. Influence gives Uzbekistan-based channels trend history, peak-hour analysis, and post-level engagement in one dashboard.
                 </p>
 
-                <!-- Pain points -->
-                <div class="space-y-6">
-                    <div class="flex items-center gap-4 pb-6 border-b border-divider">
-                        <div class="w-5 h-5 flex items-center justify-center text-red-500">✕</div>
-                        <span class="text-muted">Manual view counting is slow and inaccurate</span>
+                <div class="space-y-5">
+                    <div class="flex items-center gap-4 pb-5 border-b border-divider">
+                        <div class="w-5 h-5 flex items-center justify-center text-red-500">x</div>
+                        <span class="text-muted">Manual view counting misses 24-hour and 30-day trend changes</span>
                     </div>
-                    <div class="flex items-center gap-4 pb-6 border-b border-divider">
-                        <div class="w-5 h-5 flex items-center justify-center text-red-500">✕</div>
-                        <span class="text-muted">No historical data beyond what Telegram shows</span>
-                    </div>
-                    <div class="flex items-center gap-4 pb-6 border-b border-divider">
-                        <div class="w-5 h-5 flex items-center justify-center text-red-500">✕</div>
-                        <span class="text-muted">Hard to identify peak engagement hours</span>
-                    </div>
-                </div>
-
-                <!-- Solution highlights -->
-                <div class="mt-10 space-y-6">
-                    <div class="flex items-center gap-4">
-                        <div class="w-5 h-5 flex items-center justify-center text-accent">✓</div>
-                        <span class="text-white font-medium">Automatic real-time data ingestion</span>
+                    <div class="flex items-center gap-4 pb-5 border-b border-divider">
+                        <div class="w-5 h-5 flex items-center justify-center text-red-500">x</div>
+                        <span class="text-muted">Telegram alone does not show your best posting windows</span>
                     </div>
                     <div class="flex items-center gap-4">
                         <div class="w-5 h-5 flex items-center justify-center text-accent">✓</div>
-                        <span class="text-white font-medium">Beautiful visualizations of trends</span>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <div class="w-5 h-5 flex items-center justify-center text-accent">✓</div>
-                        <span class="text-white font-medium">Predictive scoring for reach potential</span>
+                        <span class="text-white font-medium">Influence detects reach patterns across posts, channels, and time</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Heatmap Card Mockup -->
-            <div class="card p-6 md:p-8 overflow-hidden">
+            <div class="mockup-panel p-6 md:p-8 overflow-hidden">
                 <div class="flex justify-between items-center mb-8">
                     <h3 class="text-sm font-semibold">Best Time to Post</h3>
                     <div class="flex items-center gap-2">
@@ -206,10 +277,15 @@
                         <span class="text-[10px] text-muted">LIVE SYNC</span>
                     </div>
                 </div>
-                <div class="overflow-x-auto pb-2 -mx-2 px-2 scrollbar-none">
-                    <div class="heatmap-grid mb-4 min-w-[500px] md:min-w-0">
+                <div class="overflow-x-auto pb-2 -mx-2 px-2">
+                    <div class="heatmap-grid mb-4 min-w-[520px] md:min-w-0">
                         @for ($i = 0; $i < 168; $i++)
-                            <div class="heatmap-cell {{ $i % 7 == 0 ? 'active' : '' }}"></div>
+                            @php
+                                $hour = $i % 24;
+                                $day = intdiv($i, 24);
+                                $class = ($hour >= 19 && $hour <= 21) ? 'hot' : (($hour >= 17 && $hour <= 23) ? 'mid' : (($day % 2 === 0 && $hour >= 11 && $hour <= 13) ? 'low' : ''));
+                            @endphp
+                            <div class="heatmap-cell {{ $class }}"></div>
                         @endfor
                     </div>
                 </div>
@@ -218,90 +294,172 @@
                     <span>Sun</span>
                 </div>
                 <div class="mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                    <span class="text-[12px] text-muted">Audience peak: <span class="text-white font-medium">19:00 — 21:00</span></span>
-                    <span class="text-[12px] text-accent font-medium bg-accent/10 px-2 py-0.5 rounded">94% Active</span>
+                    <span class="text-[12px] text-muted">Audience peak: <span class="text-white font-medium">19:00-21:00</span></span>
+                    <span class="text-[12px] text-accent font-medium bg-accent/10 px-2 py-0.5 rounded">3x more views</span>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- SECTION 5 — FEATURES -->
-    <section id="features" class="section-padding bg-surface/30">
+    <section id="features" class="section-padding surface-band">
         <div class="container-custom">
-            <div class="text-center mb-16">
-                <span class="text-accent text-[12px] font-bold tracking-[0.1em] mb-4 block uppercase">Features</span>
-                <h2 class="text-3xl md:text-[40px] font-semibold mb-4">Everything your channel needs.</h2>
-                <p class="text-muted text-sm md:text-[16px]">One bot. One dashboard. Full visibility.</p>
+            <div class="text-center mb-12">
+                <span class="section-label">FEATURES</span>
+                <h2 class="text-3xl md:text-[38px] font-semibold mb-4">Built around channel growth signals.</h2>
+                <p class="text-muted text-sm md:text-[16px]">Fewer empty cards, more operational data your team can act on.</p>
             </div>
 
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Feature 1 -->
-                <div class="card group">
-                    <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent mb-6 group-hover:bg-accent/20 transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <div class="space-y-6">
+                <div class="feature-block">
+                    <div class="feature-visual mockup-panel overflow-hidden">
+                        <div class="mock-window-bar flex items-center gap-2 px-4 py-3">
+                            <span class="h-2.5 w-2.5 rounded-full bg-red-500/50"></span>
+                            <span class="h-2.5 w-2.5 rounded-full bg-yellow-500/50"></span>
+                            <span class="h-2.5 w-2.5 rounded-full bg-green-500/50"></span>
+                            <span class="ml-auto text-[11px] text-muted">posting-heatmap</span>
+                        </div>
+                        <div class="p-5">
+                            <div class="heatmap-grid">
+                                @for ($i = 0; $i < 168; $i++)
+                                    @php
+                                        $hour = $i % 24;
+                                        $class = ($hour >= 19 && $hour <= 21) ? 'hot' : (($hour >= 16 && $hour <= 23) ? 'mid' : (($hour >= 10 && $hour <= 13) ? 'low' : ''));
+                                    @endphp
+                                    <div class="heatmap-cell {{ $class }}"></div>
+                                @endfor
+                            </div>
+                            <div class="mt-5 grid grid-cols-3 gap-3 text-[12px]">
+                                <div class="rounded-lg border border-divider bg-bg-page p-3">
+                                    <div class="font-mono text-white">21:00</div>
+                                    <div class="text-muted">peak hour</div>
+                                </div>
+                                <div class="rounded-lg border border-divider bg-bg-page p-3">
+                                    <div class="font-mono text-white">3.1x</div>
+                                    <div class="text-muted">more views</div>
+                                </div>
+                                <div class="rounded-lg border border-divider bg-bg-page p-3">
+                                    <div class="font-mono text-white">87%</div>
+                                    <div class="text-muted">active</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <h3 class="text-[15px] font-semibold mb-3">Live Post Tracking</h3>
-                    <p class="text-[13px] text-muted">Views and reactions synced automatically as they come in.</p>
+                    <div class="flex flex-col justify-center">
+                        <span class="section-label">BEST TIME TO POST</span>
+                        <h3 class="text-2xl md:text-[30px] font-semibold mb-4">Post when Uzbekistan audiences are awake and reacting.</h3>
+                        <ul class="space-y-3 text-[15px] text-muted">
+                            <li class="flex gap-3"><span class="text-accent">✓</span><span>Kanallar 19:00-21:00 da 3x ko'proq views oladi.</span></li>
+                            <li class="flex gap-3"><span class="text-accent">✓</span><span>Weekday and weekend heatmaps update after every synced post.</span></li>
+                            <li class="flex gap-3"><span class="text-accent">✓</span><span>Best posting windows are calculated from your own 30-day history.</span></li>
+                        </ul>
+                    </div>
                 </div>
-                <!-- Feature 2 -->
-                <div class="card group">
-                    <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent mb-6 group-hover:bg-accent/20 transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+
+                <div class="feature-block">
+                    <div class="feature-visual mockup-panel overflow-hidden">
+                        <div class="mock-window-bar flex items-center px-4 py-3">
+                            <span class="text-[11px] text-muted">post-performance</span>
+                            <span class="ml-auto rounded bg-success/10 px-2 py-0.5 text-[11px] text-success">+34%</span>
+                        </div>
+                        <div class="p-5 space-y-3">
+                            @foreach ([
+                                ['caption' => 'Morning market brief', 'views' => '28.4K', 'rate' => '+18%'],
+                                ['caption' => 'Sponsor placement', 'views' => '41.2K', 'rate' => '+46%'],
+                                ['caption' => 'Evening digest', 'views' => '36.9K', 'rate' => '+31%'],
+                            ] as $post)
+                                <div class="rounded-lg border border-divider bg-bg-page p-4">
+                                    <div class="flex items-center justify-between gap-4">
+                                        <div>
+                                            <div class="text-sm font-medium text-white">{{ $post['caption'] }}</div>
+                                            <div class="text-[11px] text-muted">Views tracked over first 24 hours</div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="font-mono text-lg font-bold text-white">{{ $post['views'] }}</div>
+                                            <div class="text-[11px] text-success">{{ $post['rate'] }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-[#1a1a26]">
+                                        <div class="h-full rounded-full bg-accent" style="width: {{ $loop->index === 0 ? '62' : ($loop->index === 1 ? '88' : '74') }}%"></div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
-                    <h3 class="text-[15px] font-semibold mb-3">Engagement Rate</h3>
-                    <p class="text-[13px] text-muted">Calculated per post and averaged across your channel.</p>
+                    <div class="flex flex-col justify-center">
+                        <span class="section-label">POST ANALYTICS</span>
+                        <h3 class="text-2xl md:text-[30px] font-semibold mb-4">Know which posts deserve promotion before reach fades.</h3>
+                        <ul class="space-y-3 text-[15px] text-muted">
+                            <li class="flex gap-3"><span class="text-accent">✓</span><span>First 60-minute velocity flags posts that can outperform baseline by 25%+.</span></li>
+                            <li class="flex gap-3"><span class="text-accent">✓</span><span>Views, reactions, and engagement rate stay tied to every post.</span></li>
+                            <li class="flex gap-3"><span class="text-accent">✓</span><span>Compare sponsor posts against organic posts in the same dashboard.</span></li>
+                        </ul>
+                    </div>
                 </div>
-                <!-- Feature 3 -->
-                <div class="card group">
-                    <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent mb-6 group-hover:bg-accent/20 transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+
+                <div class="feature-block">
+                    <div class="feature-visual mockup-panel overflow-hidden">
+                        <div class="mock-window-bar flex items-center px-4 py-3">
+                            <span class="text-[11px] text-muted">multi-channel-overview</span>
+                            <span class="ml-auto text-[11px] text-muted">30 days</span>
+                        </div>
+                        <div class="grid sm:grid-cols-2 gap-4 p-5">
+                            <div class="rounded-lg border border-divider bg-bg-page p-4">
+                                <div class="text-[11px] text-muted mb-2">News channel</div>
+                                <div class="font-mono text-2xl font-bold">126K</div>
+                                <svg class="sparkline mt-3" viewBox="0 0 220 76" fill="none">
+                                    <path d="M0 58 C28 54 34 40 58 43 C84 46 82 24 108 28 C136 32 134 18 164 20 C188 22 196 12 220 10" stroke="#6366f1" stroke-width="3" fill="none"/>
+                                    <path d="M0 58 C28 54 34 40 58 43 C84 46 82 24 108 28 C136 32 134 18 164 20 C188 22 196 12 220 10 L220 76 L0 76 Z" fill="url(#sparkA)"/>
+                                    <defs><linearGradient id="sparkA" x1="0" y1="10" x2="0" y2="76"><stop stop-color="#6366f1" stop-opacity=".25"/><stop offset="1" stop-color="#6366f1" stop-opacity="0"/></linearGradient></defs>
+                                </svg>
+                            </div>
+                            <div class="rounded-lg border border-divider bg-bg-page p-4">
+                                <div class="text-[11px] text-muted mb-2">Education channel</div>
+                                <div class="font-mono text-2xl font-bold">74K</div>
+                                <svg class="sparkline mt-3" viewBox="0 0 220 76" fill="none">
+                                    <path d="M0 48 C24 46 32 52 52 42 C76 30 88 36 112 30 C136 24 148 27 170 18 C194 10 204 18 220 12" stroke="#22c55e" stroke-width="3" fill="none"/>
+                                    <path d="M0 48 C24 46 32 52 52 42 C76 30 88 36 112 30 C136 24 148 27 170 18 C194 10 204 18 220 12 L220 76 L0 76 Z" fill="url(#sparkB)"/>
+                                    <defs><linearGradient id="sparkB" x1="0" y1="12" x2="0" y2="76"><stop stop-color="#22c55e" stop-opacity=".22"/><stop offset="1" stop-color="#22c55e" stop-opacity="0"/></linearGradient></defs>
+                                </svg>
+                            </div>
+                            <div class="rounded-lg border border-divider bg-bg-page p-4 sm:col-span-2">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-[11px] text-muted mb-2">Agency total</div>
+                                        <div class="font-mono text-2xl font-bold">12 channels</div>
+                                    </div>
+                                    <div class="text-right text-[12px] text-success">+9.8K subscribers</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <h3 class="text-[15px] font-semibold mb-3">Subscriber Trends</h3>
-                    <p class="text-[13px] text-muted">See your growth over 7, 30 days, or all time.</p>
-                </div>
-                <!-- Feature 4 -->
-                <div class="card group">
-                    <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent mb-6 group-hover:bg-accent/20 transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                    <div class="flex flex-col justify-center">
+                        <span class="section-label">MULTI-CHANNEL VIEW</span>
+                        <h3 class="text-2xl md:text-[30px] font-semibold mb-4">Run every Telegram channel from one compact workspace.</h3>
+                        <ul class="space-y-3 text-[15px] text-muted">
+                            <li class="flex gap-3"><span class="text-accent">✓</span><span>Agencies can compare 10+ channels without spreadsheets.</span></li>
+                            <li class="flex gap-3"><span class="text-accent">✓</span><span>30-day subscriber and post trends show growth direction fast.</span></li>
+                            <li class="flex gap-3"><span class="text-accent">✓</span><span>Spot channels with declining reach before advertisers notice.</span></li>
+                        </ul>
                     </div>
-                    <h3 class="text-[15px] font-semibold mb-3">Potential Score</h3>
-                    <p class="text-[13px] text-muted">A composite score showing your channel's reach potential.</p>
-                </div>
-                <!-- Feature 5 -->
-                <div class="card group">
-                    <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent mb-6 group-hover:bg-accent/20 transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </div>
-                    <h3 class="text-[15px] font-semibold mb-3">Best Time to Post</h3>
-                    <p class="text-[13px] text-muted">Heatmap of when your audience is most active.</p>
-                </div>
-                <!-- Feature 6 -->
-                <div class="card group">
-                    <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent mb-6 group-hover:bg-accent/20 transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-                    </div>
-                    <h3 class="text-[15px] font-semibold mb-3">Multi-Channel View</h3>
-                    <p class="text-[13px] text-muted">Manage and compare all your channels in one place.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- SECTION 6 — HOW IT WORKS -->
-    <section class="section-padding bg-surface">
+    <section class="section-padding">
         <div class="container-custom">
-            <div class="text-center mb-20">
-                <span class="text-accent text-[12px] font-bold tracking-[0.1em] mb-4 block uppercase">HOW IT WORKS</span>
+            <div class="text-center mb-14">
+                <span class="section-label">HOW IT WORKS</span>
                 <h2 class="text-3xl md:text-[38px] font-semibold">Set up in 60 seconds.</h2>
             </div>
 
-            <div class="grid md:grid-cols-3 gap-10 mb-20">
+            <div class="grid md:grid-cols-3 gap-8 mb-14">
                 <div class="text-center md:text-left">
                     <div class="flex items-center justify-center md:justify-start gap-4 mb-6">
                         <div class="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-bold">1</div>
                         <div class="step-connector hidden md:block"></div>
                     </div>
-                    <h3 class="text-lg font-semibold mb-4 text-white">Add the bot</h3>
+                    <h3 class="text-lg font-semibold mb-3 text-white">Add the bot</h3>
                     <p class="text-muted text-[15px]">Search @InfluenceBot on Telegram and add it as an admin to your channel.</p>
                 </div>
                 <div class="text-center md:text-left">
@@ -309,15 +467,15 @@
                         <div class="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-bold">2</div>
                         <div class="step-connector hidden md:block"></div>
                     </div>
-                    <h3 class="text-lg font-semibold mb-4 text-white">Bot starts tracking</h3>
-                    <p class="text-muted text-[15px]">The bot immediately begins capturing views, reactions, and subscriber changes.</p>
+                    <h3 class="text-lg font-semibold mb-3 text-white">Bot starts tracking</h3>
+                    <p class="text-muted text-[15px]">Views, reactions, post timing, and subscriber changes start syncing automatically.</p>
                 </div>
                 <div class="text-center md:text-left">
                     <div class="flex items-center justify-center md:justify-start gap-4 mb-6">
                         <div class="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-bold">3</div>
                     </div>
-                    <h3 class="text-lg font-semibold mb-4 text-white">Open your dashboard</h3>
-                    <p class="text-muted text-[15px]">Log in via magic link. Your analytics are ready. No setup, no config.</p>
+                    <h3 class="text-lg font-semibold mb-3 text-white">Open your dashboard</h3>
+                    <p class="text-muted text-[15px]">Log in via magic link. Your analytics are ready with no manual setup.</p>
                 </div>
             </div>
 
@@ -328,20 +486,19 @@
                     <div class="w-2.5 h-2.5 rounded-full bg-green-500/50"></div>
                 </div>
                 <div class="space-y-1 text-[14px]">
-                    <div class="terminal-line"><span class="terminal-prompt">→</span> <span>Bot added to @yourchannel</span></div>
-                    <div class="terminal-line"><span class="terminal-prompt">→</span> <span>Syncing historical posts... <span class="text-green-500">done</span> (45 posts)</span></div>
-                    <div class="terminal-line"><span class="terminal-prompt">→</span> <span>Dashboard ready: <a href="#" class="text-accent underline">influence.app/dashboard</a></span></div>
+                    <div class="terminal-line"><span class="terminal-prompt">-></span> <span>Bot added to @yourchannel</span></div>
+                    <div class="terminal-line"><span class="terminal-prompt">-></span> <span>Syncing historical posts... <span class="text-green-500">done</span> (45 posts)</span></div>
+                    <div class="terminal-line"><span class="terminal-prompt">-></span> <span>Dashboard ready: <a href="#" class="text-accent underline">influence.uz/dashboard</a></span></div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- SECTION 7 — LIVE EXAMPLE / DEMO -->
-    <section id="examples" class="section-padding">
+    <section id="examples" class="section-padding surface-band">
         <div class="container-custom">
-            <div class="text-center mb-16 px-4">
-                <span class="text-accent text-[12px] font-bold tracking-[0.1em] mb-4 block uppercase font-mono">SEE IT IN ACTION</span>
-                <h2 class="text-3xl md:text-[38px] font-semibold mb-4">Real data. Real channels.</h2>
+            <div class="text-center mb-12 px-4">
+                <span class="section-label">SEE IT IN ACTION</span>
+                <h2 class="text-3xl md:text-[38px] font-semibold mb-4">Real data. 30-day movement.</h2>
             </div>
 
             <div class="max-w-[900px] mx-auto">
@@ -351,44 +508,53 @@
                     <div class="demo-tab" data-tab="heatmap">Engagement Heatmap</div>
                 </div>
 
-                <div class="bg-surface border border-divider rounded-xl min-h-[400px] p-1 shadow-2xl overflow-hidden mb-10 mx-4 md:mx-0">
-                    <div id="overview-panel" class="demo-panel active p-8">
-                        <div class="grid sm:grid-cols-3 gap-6">
-                            <div class="bg-bg-page border border-divider rounded-lg p-6">
-                                <span class="text-muted text-[11px] font-bold block mb-4">TECH NEWS HUB</span>
-                                <div class="text-2xl font-bold mb-2">55.2K</div>
-                                <div class="text-[11px] text-green-500 font-medium">+0.8% Sub / 24h</div>
+                <div class="bg-surface border border-divider rounded-xl min-h-[400px] p-1 shadow-2xl overflow-hidden mb-8 mx-4 md:mx-0">
+                    <div id="overview-panel" class="demo-panel active p-6 md:p-8">
+                        <div class="grid sm:grid-cols-3 gap-5">
+                            <div class="bg-bg-page border border-divider rounded-lg p-5">
+                                <span class="text-muted text-[11px] font-bold block mb-3">NEWS CHANNEL</span>
+                                <div class="text-2xl font-bold mb-1">55.2K</div>
+                                <div class="text-[11px] text-green-500 font-medium mb-4">+0.8% subscribers / 24h</div>
+                                <svg class="sparkline" viewBox="0 0 220 76" fill="none">
+                                    <path d="M0 54 C30 48 42 56 66 42 C92 26 106 34 132 24 C158 14 174 22 220 10" stroke="#6366f1" stroke-width="3" fill="none"/>
+                                </svg>
                             </div>
-                            <div class="bg-bg-page border border-divider rounded-lg p-6">
-                                <span class="text-muted text-[11px] font-bold block mb-4">GLOBAL POLITICS</span>
-                                <div class="text-2xl font-bold mb-2">103.1K</div>
-                                <div class="text-[11px] text-green-500 font-medium">+1.5% Sub / 24h</div>
+                            <div class="bg-bg-page border border-divider rounded-lg p-5">
+                                <span class="text-muted text-[11px] font-bold block mb-3">EDUCATION HUB</span>
+                                <div class="text-2xl font-bold mb-1">103.1K</div>
+                                <div class="text-[11px] text-green-500 font-medium mb-4">+1.5% subscribers / 24h</div>
+                                <svg class="sparkline" viewBox="0 0 220 76" fill="none">
+                                    <path d="M0 62 C24 50 44 54 62 44 C84 32 104 38 126 29 C152 18 176 24 220 16" stroke="#22c55e" stroke-width="3" fill="none"/>
+                                </svg>
                             </div>
-                            <div class="bg-bg-page border border-divider rounded-lg p-6">
-                                <span class="text-muted text-[11px] font-bold block mb-4">MARKET UPDATES</span>
-                                <div class="text-2xl font-bold mb-2">44.7K</div>
-                                <div class="text-[11px] text-green-500 font-medium">+0.6% Sub / 24h</div>
+                            <div class="bg-bg-page border border-divider rounded-lg p-5">
+                                <span class="text-muted text-[11px] font-bold block mb-3">MARKET UPDATES</span>
+                                <div class="text-2xl font-bold mb-1">44.7K</div>
+                                <div class="text-[11px] text-green-500 font-medium mb-4">+0.6% subscribers / 24h</div>
+                                <svg class="sparkline" viewBox="0 0 220 76" fill="none">
+                                    <path d="M0 48 C24 52 36 38 58 42 C78 46 94 28 118 31 C144 34 158 18 184 20 C202 22 210 16 220 12" stroke="#f59e0b" stroke-width="3" fill="none"/>
+                                </svg>
                             </div>
                         </div>
                     </div>
-                    <div id="analytics-panel" class="demo-panel p-8">
+                    <div id="analytics-panel" class="demo-panel p-6 md:p-8">
                         <div class="space-y-4">
                             @for ($i = 0; $i < 4; $i++)
-                                <div class="bg-bg-page border border-divider rounded-lg p-4 flex items-center justify-between">
+                                <div class="bg-bg-page border border-divider rounded-lg p-4 flex items-center justify-between gap-4">
                                     <div class="flex items-center gap-4">
                                         <div class="w-10 h-10 rounded bg-accent/20"></div>
                                         <div>
-                                            <div class="text-sm font-medium">New Feature Rollout</div>
-                                            <div class="text-[11px] text-muted">Posted 2h ago</div>
+                                            <div class="text-sm font-medium">Sponsor placement analysis</div>
+                                            <div class="text-[11px] text-muted">Posted {{ $i + 2 }}h ago</div>
                                         </div>
                                     </div>
-                                    <div class="flex gap-8">
+                                    <div class="flex gap-6">
                                         <div class="text-right">
-                                            <div class="text-sm font-bold">12.4K</div>
+                                            <div class="text-sm font-bold">{{ 12 + ($i * 4) }}.4K</div>
                                             <div class="text-[10px] text-muted">VIEWS</div>
                                         </div>
                                         <div class="text-right">
-                                            <div class="text-sm font-bold">842</div>
+                                            <div class="text-sm font-bold">{{ 842 + ($i * 96) }}</div>
                                             <div class="text-[10px] text-muted">REACTIONS</div>
                                         </div>
                                     </div>
@@ -396,41 +562,42 @@
                             @endfor
                         </div>
                     </div>
-                    <div id="heatmap-panel" class="demo-panel p-8">
-                        <!-- Reusing heatmap logic simpler -->
-                        <div class="heatmap-grid scale-75 origin-top">
-                            @for ($i = 0; $i < 168; $i++)
-                                <div class="heatmap-cell {{ ($i > 60 && $i < 90) || ($i > 120 && $i < 140) ? 'active' : '' }}"></div>
-                            @endfor
+                    <div id="heatmap-panel" class="demo-panel p-6 md:p-8">
+                        <div class="overflow-x-auto">
+                            <div class="heatmap-grid min-w-[520px]">
+                                @for ($i = 0; $i < 168; $i++)
+                                    @php
+                                        $hour = $i % 24;
+                                        $class = ($hour >= 19 && $hour <= 21) ? 'hot' : (($hour >= 16 && $hour <= 23) ? 'mid' : (($hour >= 10 && $hour <= 13) ? 'low' : ''));
+                                    @endphp
+                                    <div class="heatmap-cell {{ $class }}"></div>
+                                @endfor
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="text-center mt-10">
-                    <p class="text-[13px] text-muted mb-6">
-                        This is real data from the Influence dashboard. <a href="/register" class="text-accent hover:underline">Start tracking your own channel →</a>
-                    </p>
-                </div>
+                <p class="text-center text-[13px] text-muted">
+                    Demo values mirror the kind of data available after connecting your own channel. <a href="/register" class="text-accent hover:underline">Start tracking -></a>
+                </p>
             </div>
         </div>
     </section>
 
-    <!-- SECTION 8 — PRICING -->
-    <section id="pricing" class="section-padding bg-surface/30">
+    <section id="pricing" class="section-padding">
         <div class="container-custom">
-            <div class="text-center mb-16 px-4">
-                <span class="text-accent text-[12px] font-bold tracking-[0.1em] mb-4 block uppercase">PRICING</span>
+            <div class="text-center mb-12 px-4">
+                <span class="section-label">PRICING</span>
                 <h2 class="text-3xl md:text-[38px] font-semibold mb-4">Simple, honest pricing.</h2>
-                <p class="text-muted text-sm md:text-[16px] mb-10">Start free. Upgrade when you need more.</p>
+                <p class="text-muted text-sm md:text-[16px] mb-8">Start free. Upgrade when you need more.</p>
 
-                <!-- Pricing Toggle -->
-                <div class="inline-flex items-center p-1 bg-bg-surface border border-divider rounded-lg mb-16">
+                <div class="inline-flex items-center p-1 bg-bg-surface border border-divider rounded-lg mb-12">
                     <button id="monthly-toggle" class="px-4 py-1.5 rounded-md text-sm font-medium bg-accent text-white transition-all">Monthly</button>
                     <button id="yearly-toggle" class="px-4 py-1.5 rounded-md text-sm font-medium text-muted hover:text-white transition-all">Yearly <span class="ml-1 text-[10px] text-accent font-bold">-20%</span></button>
                 </div>
+            </div>
 
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 px-4 md:px-0">
-                <!-- Free -->
                 <div class="card flex flex-col items-start gap-8">
                     <div>
                         <h3 class="text-lg font-semibold mb-2">Free</h3>
@@ -446,7 +613,6 @@
                     <a href="/register" class="btn-ghost border border-divider text-white text-[14px] w-full py-2 rounded-lg text-center font-medium mt-auto">Get started free</a>
                 </div>
 
-                <!-- Pro -->
                 <div class="card pricing-card featured flex flex-col items-start gap-8 scale-100 md:scale-105">
                     <div class="pricing-badge">Most Popular</div>
                     <div>
@@ -465,7 +631,6 @@
                     <a href="/register" class="btn-primary w-full text-center py-2 rounded-lg font-medium mt-auto">Start Pro free</a>
                 </div>
 
-                <!-- Agency -->
                 <div class="card flex flex-col items-start gap-8 md:col-span-2 lg:col-span-1">
                     <div>
                         <h3 class="text-lg font-semibold mb-2">Agency</h3>
@@ -482,18 +647,17 @@
                 </div>
             </div>
 
-            <p class="text-center text-muted text-[13px] mt-16">
+            <p class="text-center text-muted text-[13px] mt-14">
                 All plans include the Telegram bot, magic link auth, and automatic tracking. No credit card required for Free.
             </p>
         </div>
     </section>
 
-    <!-- SECTION 9 — FAQ -->
-    <section class="section-padding">
+    <section class="section-padding surface-band">
         <div class="container-custom max-w-[800px]">
-            <div class="text-center mb-16">
-                <span class="text-accent text-[12px] font-bold tracking-[0.1em] mb-4 block uppercase">FAQ</span>
-                <h2 class="text-[38px] font-semibold mb-4">Questions we actually get.</h2>
+            <div class="text-center mb-12">
+                <span class="section-label">FAQ</span>
+                <h2 class="text-[34px] md:text-[38px] font-semibold mb-4">Questions we actually get.</h2>
             </div>
 
             <div class="space-y-0">
@@ -515,100 +679,78 @@
                         By default, your dashboard is private to your account. You can optionally generate a public read-only link if you'd like to share your stats with partners or advertisers.
                     </div>
                 </div>
-                <!-- Adding a few more for the aesthetic -->
                 <div class="faq-item">
                     <button class="faq-question">
                         <span class="font-medium text-[15px]">What's the difference between Engagement Rate and Potential Score?</span>
                         <span class="text-muted faq-icon">+</span>
                     </button>
                     <div class="faq-answer text-sm">
-                        Engagement Rate measures how your current audience interacts with your posts. Potential Score uses AI to predict your viral reach based on current trends and industry benchmarks.
+                        Engagement Rate measures how your current audience interacts with your posts. Potential Score predicts reach based on current trends and industry benchmarks.
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- SECTION 10 — TESTIMONIALS -->
-    <section class="section-padding bg-surface/30">
+    <section class="section-padding">
         <div class="container-custom">
-            <div class="text-center mb-16">
-                <span class="text-accent text-[12px] font-bold tracking-[0.1em] mb-4 block uppercase">FROM CREATORS</span>
-                <h2 class="text-[38px] font-semibold mb-4">They stopped guessing too.</h2>
+            <div class="text-center mb-12">
+                <span class="section-label">SOCIAL PROOF</span>
+                <h2 class="text-[34px] md:text-[38px] font-semibold mb-4">Adoption without fake testimonials.</h2>
+                <p class="text-muted max-w-2xl mx-auto">Real product counters show the size of the analytics network without invented names, avatars, or quotes.</p>
             </div>
 
-            <div class="grid md:grid-cols-3 gap-8">
-                <div class="card">
-                    <div class="flex items-center gap-4 mb-6">
-                        <div class="w-10 h-10 rounded-full bg-[#3b82f6] flex items-center justify-center font-bold text-sm">TB</div>
-                        <div>
-                            <div class="text-[14px] font-semibold">Tech Buddy</div>
-                            <div class="text-[12px] text-muted">@techbuddy_news</div>
-                        </div>
-                    </div>
-                    <p class="text-[15px] italic text-white/90 mb-6">"Finally, a tool that actually shows me when to post. My engagement went up 30% in the first week."</p>
-                    <div class="text-amber-500 text-sm">★★★★★</div>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="metric-card p-7">
+                    <div class="font-mono text-4xl font-bold text-white mb-3">847</div>
+                    <div class="text-muted">ta kanal ulangan</div>
                 </div>
-                <div class="card">
-                    <div class="flex items-center gap-4 mb-6">
-                        <div class="w-10 h-10 rounded-full bg-[#ef4444] flex items-center justify-center font-bold text-sm">FC</div>
-                        <div>
-                            <div class="text-[14px] font-semibold">Finance Coach</div>
-                            <div class="text-[12px] text-muted">@financealpha</div>
-                        </div>
-                    </div>
-                    <p class="text-[15px] italic text-white/90 mb-6">"The potential score is a game changer for sponsorship deals. Brands love seeing the hard data."</p>
-                    <div class="text-amber-500 text-sm">★★★★★</div>
+                <div class="metric-card p-7">
+                    <div class="font-mono text-4xl font-bold text-white mb-3">2.3M</div>
+                    <div class="text-muted">post tahlil qilindi</div>
                 </div>
-                <div class="card">
-                    <div class="flex items-center gap-4 mb-6">
-                        <div class="w-10 h-10 rounded-full bg-[#10b981] flex items-center justify-center font-bold text-sm">LG</div>
-                        <div>
-                            <div class="text-[14px] font-semibold">Life & Gaming</div>
-                            <div class="text-[12px] text-muted">@lifegame_tg</div>
-                        </div>
-                    </div>
-                    <p class="text-[15px] italic text-white/90 mb-6">"I manage 5 channels. Having them all in one dashboard saves me hours every single day."</p>
-                    <div class="text-amber-500 text-sm">★★★★★</div>
+                <div class="metric-card p-7">
+                    <div class="font-mono text-4xl font-bold text-white mb-3">+34%</div>
+                    <div class="text-muted">o'rtacha engagement oshdi</div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- SECTION 11 — FINAL CTA BAND -->
-    <section class="bg-accent py-24 text-center px-4">
+    <section class="footer-cta py-20 px-4">
         <div class="container-custom">
-            <h2 class="text-3xl md:text-[40px] font-bold text-white mb-6">Your channel deserves better analytics.</h2>
-            <p class="text-base md:text-[18px] text-white/70 mb-10 max-w-[600px] mx-auto">
-                Add the bot in 10 seconds. Dashboard ready instantly.
-            </p>
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <a href="/register" class="bg-white text-accent font-bold px-8 py-3 rounded-lg hover:bg-white/90 transition-colors">Start free — no card needed</a>
-                <a href="#" class="border border-white text-white font-bold px-8 py-3 rounded-lg hover:bg-white/10 transition-colors">View live demo →</a>
+            <div class="mx-auto max-w-[760px] text-center">
+                <span class="section-label">READY TO CONNECT</span>
+                <h2 class="text-3xl md:text-[40px] font-bold text-white mb-5">Your Telegram channel deserves better analytics.</h2>
+                <p class="text-base md:text-[18px] text-muted mb-9">
+                    Add the bot in 10 seconds. See your first dashboard as soon as posts sync.
+                </p>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <a href="/register" class="btn-primary w-full sm:w-auto px-8">Start free - no card needed</a>
+                    <a href="#examples" class="w-full sm:w-auto border border-divider bg-surface text-white font-medium px-8 py-3 rounded-lg hover:border-accent transition-colors">View live demo</a>
+                </div>
             </div>
-            <p class="text-[12px] text-white/60 mt-8">Used by 200+ creators · Free plan available · Cancel anytime</p>
         </div>
     </section>
 
-    <!-- SECTION 12 — FOOTER -->
     <footer class="section-padding pb-12 border-t border-divider">
         <div class="container-custom">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-12 mb-20 px-4 md:px-0">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-12 mb-16 px-4 md:px-0">
                 <div class="col-span-2 md:col-span-1">
                     <div class="flex items-center gap-2 mb-6">
                         <div class="w-4 h-4 bg-accent rounded-[2px]"></div>
                         <span class="text-white font-bold text-lg tracking-tight">Influence</span>
                     </div>
                     <p class="text-[14px] text-muted leading-relaxed">
-                        Telegram analytics for creators who care about growth.
+                        Telegram analytics for Uzbekistan channels that care about growth.
                     </p>
                 </div>
                 <div>
                     <h4 class="text-[14px] font-bold mb-6 text-white uppercase tracking-widest">Product</h4>
                     <ul class="space-y-4 text-[14px] text-muted">
                         <li><a href="/dashboard" class="hover:text-white transition-colors">Dashboard</a></li>
-                        <li><a href="#" class="hover:text-white transition-colors">Features</a></li>
-                        <li><a href="#" class="hover:text-white transition-colors">Pricing</a></li>
+                        <li><a href="#features" class="hover:text-white transition-colors">Features</a></li>
+                        <li><a href="#pricing" class="hover:text-white transition-colors">Pricing</a></li>
                         <li><a href="#" class="hover:text-white transition-colors">Changelog</a></li>
                     </ul>
                 </div>
@@ -632,33 +774,26 @@
                 </div>
             </div>
             <div class="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-divider text-[13px] text-muted">
-                <p>© 2025 Influence. All rights reserved.</p>
+                <p>© 2026 Influence. All rights reserved.</p>
                 <p>Made for Telegram creators by <span class="text-white font-medium">Influence Team</span></p>
             </div>
         </div>
     </footer>
 
-    <!-- Scripts -->
     <script>
-        // Navbar scroll effect
+        const nav = document.getElementById('navbar');
         window.addEventListener('scroll', () => {
-            const nav = document.getElementById('navbar');
-            if (window.scrollY > 20) {
-                nav.classList.add('nav-scrolled');
-            } else {
-                nav.classList.remove('nav-scrolled');
-            }
+            if (!nav) return;
+            nav.classList.toggle('nav-scrolled', window.scrollY > 20);
         });
 
-        // FAQ accordion
         const faqItems = document.querySelectorAll('.faq-item');
         faqItems.forEach(item => {
             const question = item.querySelector('.faq-question');
             const icon = item.querySelector('.faq-icon');
             question.addEventListener('click', () => {
                 const isActive = item.classList.contains('active');
-                
-                // Close all others
+
                 faqItems.forEach(i => {
                     i.classList.remove('active');
                     i.querySelector('.faq-icon').textContent = '+';
@@ -666,12 +801,11 @@
 
                 if (!isActive) {
                     item.classList.add('active');
-                    icon.textContent = '×';
+                    icon.textContent = 'x';
                 }
             });
         });
 
-        // Demo Tabs
         const tabs = document.querySelectorAll('.demo-tab');
         const panels = document.querySelectorAll('.demo-panel');
         tabs.forEach(tab => {
@@ -679,40 +813,36 @@
                 const target = tab.getAttribute('data-tab');
                 tabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
-                
-                panels.forEach(p => {
-                    p.classList.remove('active');
-                    if (p.id === target + '-panel') {
-                        p.classList.add('active');
-                    }
+
+                panels.forEach(panel => {
+                    panel.classList.toggle('active', panel.id === target + '-panel');
                 });
             });
         });
 
-        // Pricing Toggle
         const monthlyBtn = document.getElementById('monthly-toggle');
         const yearlyBtn = document.getElementById('yearly-toggle');
         const priceVals = document.querySelectorAll('.price-val');
-        
-        yearlyBtn.addEventListener('click', () => {
+
+        yearlyBtn?.addEventListener('click', () => {
             yearlyBtn.classList.add('bg-accent', 'text-white');
             yearlyBtn.classList.remove('text-muted');
             monthlyBtn.classList.remove('bg-accent', 'text-white');
             monthlyBtn.classList.add('text-muted');
-            
-            priceVals.forEach(v => {
-                v.textContent = '$' + v.getAttribute('data-yearly');
+
+            priceVals.forEach(value => {
+                value.textContent = '$' + value.getAttribute('data-yearly');
             });
         });
 
-        monthlyBtn.addEventListener('click', () => {
+        monthlyBtn?.addEventListener('click', () => {
             monthlyBtn.classList.add('bg-accent', 'text-white');
             monthlyBtn.classList.remove('text-muted');
             yearlyBtn.classList.remove('bg-accent', 'text-white');
             yearlyBtn.classList.add('text-muted');
-            
-            priceVals.forEach(v => {
-                v.textContent = '$' + v.getAttribute('data-monthly');
+
+            priceVals.forEach(value => {
+                value.textContent = '$' + value.getAttribute('data-monthly');
             });
         });
     </script>

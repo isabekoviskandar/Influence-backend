@@ -48,5 +48,5 @@ Route::post('/logout', [WebLoginController::class, 'destroy'])
 // ─── Catch-all for Inertia SPA 404 ──────────────────────────────────────────
 
 Route::get('/', function () {
-    return view('welcome');
+    return Inertia::render('Landing');
 });
