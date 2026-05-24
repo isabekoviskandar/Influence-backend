@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
@@ -49,6 +50,10 @@ Route::prefix('v1')->group(function () {
         Route::prefix('dashboard')->group(function () {
             Route::get('metrics', [DashboardController::class, 'calculateMetrics']);
         });
+    });
+
+    Route::prefix('blog')->group(function () {
+        Route::get('/', [BlogController::class, 'index']);
     });
 
 });
