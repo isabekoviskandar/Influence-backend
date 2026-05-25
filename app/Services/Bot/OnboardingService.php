@@ -152,7 +152,14 @@ class OnboardingService
 
             if ($conflict) {
                 // Orphan the conflict user (which was likely a dummy account)
+                $transferredChannels = $conflict->channels()->update(['user_id' => $existingUser->id]);
                 $conflict->update(['telegram_chat_id' => null, 'telegram_username' => null]);
+
+                Log::info('Bot onboarding: transferred channels from Telegram conflict', [
+                    'from_user' => $conflict->id,
+                    'to_user' => $existingUser->id,
+                    'channels_count' => $transferredChannels,
+                ]);
             }
 
             // Link Telegram to existing account

@@ -24,6 +24,9 @@ class MagicLoginController extends Controller
             return redirect()->route('login')->with('error', 'User not found.');
         }
 
+        Auth::logout();
+        $request->session()->forget('url.intended');
+
         Auth::login($user);
         $request->session()->regenerate();
 

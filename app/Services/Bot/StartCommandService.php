@@ -75,6 +75,8 @@ class StartCommandService
             ]);
 
             // Unlink the old account to maintain uniqueness
+            $transferredChannels = $conflict->channels()->update(['user_id' => $user->id]);
+
             $conflict->update([
                 'telegram_chat_id' => null,
                 'telegram_username' => null,
@@ -84,6 +86,12 @@ class StartCommandService
             if ($conflict->phone && ! $user->phone) {
                 $user->phone = $conflict->phone;
             }
+
+            Log::info('Telegram link conflict: transferred channels', [
+                'from_user' => $conflict->id,
+                'to_user' => $user->id,
+                'channels_count' => $transferredChannels,
+            ]);
         }
 
         // Link the accounts
