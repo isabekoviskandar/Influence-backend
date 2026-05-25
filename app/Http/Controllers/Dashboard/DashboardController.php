@@ -19,10 +19,9 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        // 1. Calculate base stats
-        $allChannels = Channel::withCount('posts')->get();
+        // 1. Calculate base stats for the authenticated user's channels only.
+        $allChannels = Channel::where('user_id', $user->id)->withCount('posts')->get();
         $totalMembers = $allChannels->sum('member_count');
-        $totalViews = $allChannels->sum('avg_views');
 
         // Calculate Growth (last 24h)
         $yesterday = now()->subHours(24);

@@ -17,9 +17,9 @@ Route::middleware('guest')->group(function () {
 
     Route::get('/register', [WebRegisterController::class, 'create'])->name('register');
     Route::post('/register', [WebRegisterController::class, 'store'])->name('register.store');
-
-    Route::get('/magic-login/{token}', [MagicLoginController::class, 'handle'])->name('magic-login');
 });
+
+Route::get('/magic-login/{token}', [MagicLoginController::class, 'handle'])->name('magic-login');
 
 Route::middleware('auth')->prefix('dashboard')->name('dashboard')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('');
