@@ -21,6 +21,12 @@ const form = useForm({
     password_confirmation: '',
 });
 
+const changePasswordForm = useForm({
+    current_password: '',
+    new_password: '',
+    new_password_confirmation: '',
+});
+
 const avatarPreview = ref(user.value?.avatar ? `/storage/${user.value.avatar}` : null);
 
 function onAvatarChange(e) {
@@ -42,6 +48,14 @@ function submit() {
         onSuccess: () => {
             form.password = '';
             form.password_confirmation = '';
+        }
+    });
+}
+
+function submitPassword() {
+    changePasswordForm.post('/dashboard/settings/change-password', {
+        onSuccess: () => {
+            changePasswordForm.reset('current_password', 'new_password', 'new_password_confirmation');
         }
     });
 }
@@ -156,11 +170,32 @@ function copyLink() {
                                 Security Shield
                             </h3>
                             <form @submit.prevent="submit" class="space-y-4">
-                                <input v-model="form.password" type="password" placeholder="New Neural Key" class="w-full bg-black/40 border-white/[0.05] border focus:border-indigo-500/50 focus:ring-0 rounded-xl px-5 py-3 text-xs font-bold text-white" />
-                                <input v-model="form.password_confirmation" type="password" placeholder="Confirm Key" class="w-full bg-black/40 border-white/[0.05] border focus:border-indigo-500/50 focus:ring-0 rounded-xl px-5 py-3 text-xs font-bold text-white" />
-                                <button type="submit" class="w-full py-3 bg-white/5 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white hover:bg-white/10 transition-all">Update Key</button>
-                            </form>
-                        </div>
+                                    <input v-model="form.password" type="password" placeholder="New Neural Key" class="w-full bg-black/40 border-white/[0.05] border focus:border-indigo-500/50 focus:ring-0 rounded-xl px-5 py-3 text-xs font-bold text-white" />
+                                    <input v-model="form.password_confirmation" type="password" placeholder="Confirm Key" class="w-full bg-black/40 border-white/[0.05] border focus:border-indigo-500/50 focus:ring-0 rounded-xl px-5 py-3 text-xs font-bold text-white" />
+                                    <button type="submit" class="w-full py-3 bg-white/5 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white hover:bg-white/10 transition-all">Update Key</button>
+                                </form>
+
+                                <div class="mt-6 pt-6 border-t border-white/[0.03]">
+                                    <h4 class="text-xs font-black text-white uppercase tracking-widest mb-3">Change Password</h4>
+                                    <form @submit.prevent="submitPassword" class="space-y-3">
+                                        <div v-if="page.props.has_password">
+                                            <input v-model="changePasswordForm.current_password" type="password" placeholder="Current Password" class="w-full bg-black/40 border-white/[0.05] border focus:border-indigo-500/50 focus:ring-0 rounded-xl px-5 py-3 text-xs font-bold text-white" />
+                                            <p v-if="changePasswordForm.errors.current_password" class="text-[10px] text-red-500 font-bold ml-1">{{ changePasswordForm.errors.current_password }}</p>
+                                        </div>
+                                        <p v-else class="text-[10px] text-gray-500">No current password on file — setting a new password will enable password login.</p>
+
+                                        <input v-model="changePasswordForm.new_password" type="password" placeholder="New Password" class="w-full bg-black/40 border-white/[0.05] border focus:border-indigo-500/50 focus:ring-0 rounded-xl px-5 py-3 text-xs font-bold text-white" />
+                                        <p v-if="changePasswordForm.errors.new_password" class="text-[10px] text-red-500 font-bold ml-1">{{ changePasswordForm.errors.new_password }}</p>
+
+                                        <input v-model="changePasswordForm.new_password_confirmation" type="password" placeholder="Confirm New Password" class="w-full bg-black/40 border-white/[0.05] border focus:border-indigo-500/50 focus:ring-0 rounded-xl px-5 py-3 text-xs font-bold text-white" />
+                                        <p v-if="changePasswordForm.errors.new_password_confirmation" class="text-[10px] text-red-500 font-bold ml-1">{{ changePasswordForm.errors.new_password_confirmation }}</p>
+
+                                        <button :disabled="changePasswordForm.processing" type="submit" class="w-full py-3 bg-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest text-white hover:bg-indigo-500 transition-all">
+                                            {{ changePasswordForm.processing ? 'Updating...' : 'Change Password' }}
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
 
                         <!-- Integration Card (Static View) -->
                         <div class="bg-[#111118] border border-white/[0.05] rounded-[2.5rem] p-8">
