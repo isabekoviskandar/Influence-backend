@@ -5,7 +5,6 @@ namespace App\Services\Bot;
 use App\Models\BotConversation;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Telegram\Bot\Api;
@@ -180,7 +179,6 @@ class OnboardingService
             'phone' => $phone,
             'telegram_chat_id' => (string) $chatId,
             'telegram_username' => $tgUser,
-            'password' => Hash::make(Str::random(32)),
             'plan' => 'free',
         ]);
 

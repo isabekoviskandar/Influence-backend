@@ -33,6 +33,7 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard')->group(functio
 
     Route::get('/settings', [SettingsController::class, 'index'])->name('.settings');
     Route::patch('/settings', [SettingsController::class, 'update'])->name('.settings.update');
+    Route::post('/settings/change-password', [SettingsController::class, 'changePassword'])->name('.settings.change-password');
     Route::get('/settings/telegram-link', [SettingsController::class, 'refreshTelegramLink'])
         ->name('.settings.telegram-link');
 

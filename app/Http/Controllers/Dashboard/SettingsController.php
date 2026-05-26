@@ -24,7 +24,32 @@ class SettingsController extends Controller
             'telegram_link' => $user->telegram_chat_id
                 ? null
                 : $this->generateLink($user->id, $botUsername),
+            'has_password' => ! empty($user->password),
         ]);
+    }
+
+    public function changePassword(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $hasPassword = ! empty($user->password);
+
+        $rules = $hasPassword
+            ? ['current_password' => ['required', 'string'], 'new_password' => ['required', 'string', 'min:8', 'confirmed']]
+            : ['new_password' => ['required', 'string', 'min:8', 'confirmed']];
+
+        $validated = $request->validate($rules);
+
+        if ($hasPassword) {
+            if (! Hash::check($validated['current_password'], $user->password)) {
+                return redirect()->back()->withErrors(['current_password' => 'Current password is incorrect']);
+            }
+        }
+
+        $user->password = Hash::make($validated['new_password']);
+        $user->save();
+
+        return redirect()->back()->with('success', 'Password updated successfully.');
     }
 
     public function update(Request $request): RedirectResponse
