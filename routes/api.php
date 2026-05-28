@@ -49,6 +49,7 @@ Route::prefix('v1')->group(function () {
 
         Route::prefix('dashboard')->group(function () {
             Route::get('metrics', [DashboardController::class, 'calculateMetrics']);
+            Route::get('channels', [DashboardController::class, 'getChannelMetrics']);
         });
     });
 
