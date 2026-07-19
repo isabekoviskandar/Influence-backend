@@ -22,6 +22,5 @@ class ChannelService
     public function getChannelMetrics($channelId)
     {
         $channel = Channel::findOrFail($channelId);
-
     }
 }
