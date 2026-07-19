@@ -20,25 +20,37 @@ class DashboardController extends Controller
         $user = $request->user();
 
         // 1. Calculate base stats for the authenticated user's channels only.
-        $allChannels = Channel::where('user_id', $user->id)->withCount('posts')->get();
+        $allChannels = Channel::where('user_id', $user->id)
+            ->withCount('posts')
+            ->get();
         $totalMembers = $allChannels->sum('member_count');
 
         // Calculate Growth (last 24h)
         $yesterday = now()->subHours(24);
-        $previousStats = ChannelStat::whereIn('channel_id', $allChannels->pluck('id'))
+        $previousStats = ChannelStat::whereIn(
+            'channel_id',
+            $allChannels->pluck('id'),
+        )
             ->where('recorded_at', '<', $yesterday)
             ->latest('recorded_at')
             ->get()
             ->unique('channel_id');
 
         $previousMembers = $previousStats->sum('member_count');
-        $memberChange = $previousMembers > 0
-            ? round((($totalMembers - $previousMembers) / $previousMembers) * 100, 1)
-            : 0;
+        $memberChange =
+            $previousMembers > 0
+                ? round(
+                    (($totalMembers - $previousMembers) / $previousMembers) *
+                        100,
+                    1,
+                )
+                : 0;
 
         $stats = [
             'total_channels' => $allChannels->count(),
-            'active_channels' => $allChannels->where('is_active', true)->count(),
+            'active_channels' => $allChannels
+                ->where('is_active', true)
+                ->count(),
             'total_members' => $totalMembers,
             'total_members_change' => $memberChange,
             'avg_engagement' => $allChannels->avg('engagement_rate')
@@ -58,8 +70,11 @@ class DashboardController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                    ->orWhere('username', 'like', "%{$search}%");
+                $q->where('title', 'like', "%{$search}%")->orWhere(
+                    'username',
+                    'like',
+                    "%{$search}%",
+                );
             });
         }
 
@@ -85,31 +100,40 @@ class DashboardController extends Controller
                 break;
         }
 
-        $channels = $query->get()->map(fn (Channel $ch) => [
-            'id' => $ch->id,
-            'title' => $ch->title,
-            'username' => $ch->username,
-            'member_count' => $ch->member_count,
-            'avg_views' => $ch->avg_views,
-            'avg_views_recent' => $ch->avg_views_recent,
-            'engagement_rate' => $ch->engagement_rate,
-            'potential_score' => $ch->potential_score,
-            'is_active' => $ch->is_active,
-            'sync_status' => $ch->sync_status,
-            'sync_current' => $ch->sync_current,
-            'sync_total' => $ch->sync_total,
-            'sync_error' => $ch->sync_error,
-            'posts_count' => $ch->posts_count,
-            'last_synced_at' => $ch->last_synced_at?->diffForHumans(),
-            'sparkline' => $ch->stats->reverse()->pluck('member_count')->values(),
-        ]);
+        $channels = $query->get()->map(
+            fn (Channel $ch) => [
+                'id' => $ch->id,
+                'title' => $ch->title,
+                'username' => $ch->username,
+                'member_count' => $ch->member_count,
+                'avg_views' => $ch->avg_views,
+                'avg_views_recent' => $ch->avg_views_recent,
+                'engagement_rate' => $ch->engagement_rate,
+                'potential_score' => $ch->potential_score,
+                'is_active' => $ch->is_active,
+                'sync_status' => $ch->sync_status,
+                'sync_current' => $ch->sync_current,
+                'sync_total' => $ch->sync_total,
+                'sync_error' => $ch->sync_error,
+                'posts_count' => $ch->posts_count,
+                'last_synced_at' => $ch->last_synced_at?->diffForHumans(),
+                'sparkline' => $ch->stats
+                    ->reverse()
+                    ->pluck('member_count')
+                    ->values(),
+            ],
+        );
 
         $botUsername = config('services.telegram.bot_username');
         $telegramLink = null;
 
         if (! $user->telegram_chat_id) {
             $token = Str::random(32);
-            Cache::put("tg_link_token:{$token}", $user->id, now()->addMinutes(15));
+            Cache::put(
+                "tg_link_token:{$token}",
+                $user->id,
+                now()->addMinutes(15),
+            );
             $telegramLink = "https://t.me/{$botUsername}?start={$token}";
         }
 
@@ -129,7 +153,9 @@ class DashboardController extends Controller
     public function analytics(Request $request): Response
     {
         $user = $request->user();
-        $allChannels = Channel::where('user_id', $user->id)->withCount('posts')->get();
+        $allChannels = Channel::where('user_id', $user->id)
+            ->withCount('posts')
+            ->get();
 
         $channelId = $request->query('channel_id', 'all');
         if ($channelId !== 'all') {
@@ -172,14 +198,19 @@ class DashboardController extends Controller
             ->where('recorded_at', '>=', $startDate)
             ->latest('recorded_at')
             ->get()
-            ->groupBy(fn ($s) => $s->recorded_at?->format('Y-m-d') ?? $s->created_at->format('Y-m-d'));
+            ->groupBy(
+                fn ($s) => $s->recorded_at?->format('Y-m-d') ??
+                    $s->created_at->format('Y-m-d'),
+            );
 
         // Current period posts
         $currentPosts = Post::whereIn('channel_id', $channelIds)
             ->where('posted_at', '>=', $startDate)
             ->get();
 
-        $currentPostsGrouped = $currentPosts->groupBy(fn ($p) => $p->posted_at->format('Y-m-d'));
+        $currentPostsGrouped = $currentPosts->groupBy(
+            fn ($p) => $p->posted_at->format('Y-m-d'),
+        );
 
         // Map stats history dates filling empty gaps
         $statsData = collect();
@@ -189,7 +220,9 @@ class DashboardController extends Controller
             $postsGroup = $currentPostsGrouped->get($date) ?? collect();
 
             $avgView = $group->sum('avg_views');
-            $avgEngagement = $group->avg('engagement_rate') ? round($group->avg('engagement_rate')) : 0;
+            $avgEngagement = $group->avg('engagement_rate')
+                ? round($group->avg('engagement_rate'))
+                : 0;
             if ($avgEngagement > 1000) {
                 $avgEngagement = 1000;
             }
@@ -213,7 +246,10 @@ class DashboardController extends Controller
             ->count();
 
         $curMembers = $allChannels->sum('member_count'); // Use model total instead of potentially empty daily history
-        $prevMembers = $previousStats->sortByDesc('recorded_at')->unique('channel_id')->sum('member_count');
+        $prevMembers = $previousStats
+            ->sortByDesc('recorded_at')
+            ->unique('channel_id')
+            ->sum('member_count');
         if ($prevMembers <= 0) {
             $prevMembers = $curMembers;
         }
@@ -223,7 +259,9 @@ class DashboardController extends Controller
             $curViews = $allChannels->sum('avg_views_recent');
         } // Fallback to current reach if no new posts
 
-        $prevViews = Post::whereIn('channel_id', $channelIds)->whereBetween('posted_at', [$previousStartDate, $startDate])->sum('views');
+        $prevViews = Post::whereIn('channel_id', $channelIds)
+            ->whereBetween('posted_at', [$previousStartDate, $startDate])
+            ->sum('views');
 
         $curEngagement = $allChannels->avg('engagement_rate') ?? 0;
         $prevEngagement = $previousStats->avg('engagement_rate') ?? 0;
@@ -244,12 +282,27 @@ class DashboardController extends Controller
             'avg_engagement' => round($curEngagement),
             'engagement_change' => $calcChange($curEngagement, $prevEngagement),
             'total_posts' => $currentPosts->count() ?: $allChannels->sum('posts_count'), // Fallback to total tracked
-            'posts_change' => $calcChange($currentPosts->count(), $previousPostsCount),
+            'posts_change' => $calcChange(
+                $currentPosts->count(),
+                $previousPostsCount,
+            ),
         ];
 
         // 24x7 Heatmap Engine
-        $heatmapTable = array_fill(0, 7, array_fill(0, 24, ['posts' => 0, 'views' => 0]));
-        $dayMap = ['Mon' => 0, 'Tue' => 1, 'Wed' => 2, 'Thu' => 3, 'Fri' => 4, 'Sat' => 5, 'Sun' => 6];
+        $heatmapTable = array_fill(
+            0,
+            7,
+            array_fill(0, 24, ['posts' => 0, 'views' => 0]),
+        );
+        $dayMap = [
+            'Mon' => 0,
+            'Tue' => 1,
+            'Wed' => 2,
+            'Thu' => 3,
+            'Fri' => 4,
+            'Sat' => 5,
+            'Sun' => 6,
+        ];
         $revDayMap = array_flip($dayMap);
 
         foreach ($currentPosts as $post) {
@@ -264,7 +317,10 @@ class DashboardController extends Controller
         $peakList = [];
         foreach ($heatmapTable as $dayIdx => $hours) {
             foreach ($hours as $hour => $data) {
-                $avg = $data['posts'] > 0 ? round($data['views'] / $data['posts']) : 0;
+                $avg =
+                    $data['posts'] > 0
+                        ? round($data['views'] / $data['posts'])
+                        : 0;
                 $flatHeatmap[] = [
                     'day' => $revDayMap[$dayIdx],
                     'day_idx' => $dayIdx,
@@ -277,7 +333,8 @@ class DashboardController extends Controller
                 if ($data['posts'] > 0) {
                     $peakList[] = [
                         'day' => $revDayMap[$dayIdx],
-                        'hour' => str_pad((string) $hour, 2, '0', STR_PAD_LEFT).':00',
+                        'hour' => str_pad((string) $hour, 2, '0', STR_PAD_LEFT).
+                            ':00',
                         'avg_views' => $avg,
                         'posts' => $data['posts'],
                     ];
@@ -286,7 +343,11 @@ class DashboardController extends Controller
         }
 
         // Heat index (0-4)
-        $activeAvgs = collect($flatHeatmap)->filter(fn ($x) => $x['avg_views'] > 0)->pluck('avg_views')->sort()->values();
+        $activeAvgs = collect($flatHeatmap)
+            ->filter(fn ($x) => $x['avg_views'] > 0)
+            ->pluck('avg_views')
+            ->sort()
+            ->values();
         foreach ($flatHeatmap as &$cell) {
             $val = $cell['avg_views'];
             if ($val == 0 || $activeAvgs->isEmpty()) {
@@ -300,7 +361,7 @@ class DashboardController extends Controller
 
                 continue;
             }
-            if ($val >= $activeAvgs->get((int) floor($count * 0.90))) {
+            if ($val >= $activeAvgs->get((int) floor($count * 0.9))) {
                 $cell['heat_index'] = 4;
             } elseif ($val >= $activeAvgs->get((int) floor($count * 0.66))) {
                 $cell['heat_index'] = 3;
@@ -345,7 +406,12 @@ class DashboardController extends Controller
         if (! empty($hourCounts)) {
             arsort($hourCounts);
             $bestH = array_key_first($hourCounts);
-            $bestH2 = str_pad((string) ((int) $bestH + 2), 2, '0', STR_PAD_LEFT);
+            $bestH2 = str_pad(
+                (string) ((int) $bestH + 2),
+                2,
+                '0',
+                STR_PAD_LEFT,
+            );
             $mostConsistentHourText = $bestH.':00–'.$bestH2.':00';
         }
 
@@ -358,7 +424,10 @@ class DashboardController extends Controller
         $currentStreak = 0;
         for ($i = 0; $i <= $days; $i++) {
             $date = $now->copy()->subDays($i)->format('Y-m-d');
-            if (isset($currentPostsGrouped[$date]) && $currentPostsGrouped[$date]->count() > 0) {
+            if (
+                isset($currentPostsGrouped[$date]) &&
+                $currentPostsGrouped[$date]->count() > 0
+            ) {
                 $currentStreak++;
                 if ($currentStreak > $bestStreak) {
                     $bestStreak = $currentStreak;
@@ -379,7 +448,9 @@ class DashboardController extends Controller
             'best_streak' => $bestStreak,
         ];
 
-        $channelSelector = $allChannels->map(fn ($c) => ['id' => (string) $c->id, 'title' => $c->title])->prepend(['id' => 'all', 'title' => 'All Channels']);
+        $channelSelector = $allChannels
+            ->map(fn ($c) => ['id' => (string) $c->id, 'title' => $c->title])
+            ->prepend(['id' => 'all', 'title' => 'All Channels']);
 
         return Inertia::render('Dashboard/Analytics', [
             'stats_history' => $statsData->values(),
@@ -406,18 +477,20 @@ class DashboardController extends Controller
             ->latest('posted_at')
             ->limit(5)
             ->get()
-            ->map(fn (Post $p) => [
-                'id' => $p->id,
-                'text' => $p->text ?? $p->caption ?? '(media only)',
-                'media_type' => $p->media_type,
-                'views' => $p->views,
-                'forwards' => $p->forwards,
-                'reactions' => $p->reactions,
-                'posted_at' => $p->posted_at?->format('M d, H:i'),
-                'posted_at_ago' => $p->posted_at?->diffForHumans(),
-                'channel_title' => $p->channel->title,
-                'channel_username' => $p->channel->username,
-            ]);
+            ->map(
+                fn (Post $p) => [
+                    'id' => $p->id,
+                    'text' => $p->text ?? ($p->caption ?? '(media only)'),
+                    'media_type' => $p->media_type,
+                    'views' => $p->views,
+                    'forwards' => $p->forwards,
+                    'reactions' => $p->reactions,
+                    'posted_at' => $p->posted_at?->format('M d, H:i'),
+                    'posted_at_ago' => $p->posted_at?->diffForHumans(),
+                    'channel_title' => $p->channel->title,
+                    'channel_username' => $p->channel->username,
+                ],
+            );
 
         // Most viral 5 posts (by views)
         $viral = Post::whereIn('channel_id', $channelIds)
@@ -425,18 +498,20 @@ class DashboardController extends Controller
             ->orderByDesc('views')
             ->limit(5)
             ->get()
-            ->map(fn (Post $p) => [
-                'id' => $p->id,
-                'text' => $p->text ?? $p->caption ?? '(media only)',
-                'media_type' => $p->media_type,
-                'views' => $p->views,
-                'forwards' => $p->forwards,
-                'reactions' => $p->reactions,
-                'posted_at' => $p->posted_at?->format('M d, H:i'),
-                'posted_at_ago' => $p->posted_at?->diffForHumans(),
-                'channel_title' => $p->channel->title,
-                'channel_username' => $p->channel->username,
-            ]);
+            ->map(
+                fn (Post $p) => [
+                    'id' => $p->id,
+                    'text' => $p->text ?? ($p->caption ?? '(media only)'),
+                    'media_type' => $p->media_type,
+                    'views' => $p->views,
+                    'forwards' => $p->forwards,
+                    'reactions' => $p->reactions,
+                    'posted_at' => $p->posted_at?->format('M d, H:i'),
+                    'posted_at_ago' => $p->posted_at?->diffForHumans(),
+                    'channel_title' => $p->channel->title,
+                    'channel_username' => $p->channel->username,
+                ],
+            );
 
         return Inertia::render('Dashboard/Posts', [
             'latest_posts' => $latest,
@@ -450,17 +525,19 @@ class DashboardController extends Controller
         $channels = Channel::where('user_id', $user->id)
             ->withCount('posts')
             ->get()
-            ->map(fn (Channel $ch) => [
-                'id' => $ch->id,
-                'title' => $ch->title,
-                'username' => $ch->username,
-                'member_count' => $ch->member_count,
-                'engagement_rate' => $ch->engagement_rate,
-                'potential_score' => $ch->potential_score,
-                'avg_views' => $ch->avg_views,
-                'posts_count' => $ch->posts_count,
-                'is_active' => $ch->is_active,
-            ])
+            ->map(
+                fn (Channel $ch) => [
+                    'id' => $ch->id,
+                    'title' => $ch->title,
+                    'username' => $ch->username,
+                    'member_count' => $ch->member_count,
+                    'engagement_rate' => $ch->engagement_rate,
+                    'potential_score' => $ch->potential_score,
+                    'avg_views' => $ch->avg_views,
+                    'posts_count' => $ch->posts_count,
+                    'is_active' => $ch->is_active,
+                ],
+            )
             ->sortByDesc('potential_score')
             ->values();
 
