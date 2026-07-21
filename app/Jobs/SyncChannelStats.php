@@ -67,7 +67,11 @@ class SyncChannelStats implements ShouldQueue
                         mkdir($sessionDir, 0775, true);
                     }
                     $MadelineProto = new \danog\MadelineProto\API($sessionDir.'/bot_session_sync.madeline', $settings);
-                    $MadelineProto->botLogin($botToken);
+                    try {
+                        $MadelineProto->getSelf();
+                    } catch (\Throwable $e) {
+                        $MadelineProto->botLogin($botToken);
+                    }
 
                     // Peer Discovery: Prioritize numeric ID for admins, fallback to username
                     $intId = (int) $chatId;
@@ -77,13 +81,13 @@ class SyncChannelStats implements ShouldQueue
                         // First try numeric ID - usually succeeds if bot is already admin
                         $MadelineProto->getInfo($intId);
                         $peer = $intId;
-                    } catch (\Exception $e) {
+                    } catch (\Throwable $e) {
                         if ($usernamePeer) {
                             Log::channel('telegram')->info('ID resolution failed, trying username fallback', ['peer' => $usernamePeer]);
                             try {
                                 $MadelineProto->getInfo($usernamePeer);
                                 $peer = $usernamePeer;
-                            } catch (\Exception $e2) {
+                            } catch (\Throwable $e2) {
                                 Log::channel('telegram')->warning('Peer resolution failed (both ID and username)', ['id' => $intId, 'username' => $usernamePeer]);
                                 throw $e2;
                             }
