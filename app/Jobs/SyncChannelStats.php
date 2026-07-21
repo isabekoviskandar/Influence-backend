@@ -73,9 +73,10 @@ class SyncChannelStats implements ShouldQueue
                         $MadelineProto->botLogin($botToken);
                     }
 
-                    // Peer Discovery: Prioritize numeric ID for admins, fallback to username
-                    $intId = (int) $chatId;
+                    // Peer Discovery: prefer username (more reliable for bots), fallback to numeric ID
                     $usernamePeer = $this->channel->username ? '@'.$this->channel->username : null;
+                    $intId = (int) $chatId;
+                    $peer = null;
 
                     try {
                         // First try numeric ID - usually succeeds if bot is already admin
@@ -99,44 +100,42 @@ class SyncChannelStats implements ShouldQueue
                     $pwrChat = $MadelineProto->getPwrChat($peer);
                     $memberCount = $pwrChat['participants_count'] ?? 0;
 
-                    // Workaround for BOT_METHOD_INVALID: Bots cannot use messages.getHistory.
-                    // Instead, we find the highest known message ID, or deduce it, and query those specific IDs backwards.
-                    $latestPost = Post::where('channel_id', $this->channel->id)->orderBy('telegram_post_id', 'desc')->first();
-                    $latestId = $latestPost ? (int) $latestPost->telegram_post_id : null;
+                    // Determine the highest message ID in this channel:
+                    // 1. Check max ID stored in database (numerically via CAST)
+                    $maxDbId = (int) Post::where('channel_id', $this->channel->id)
+                        ->max(DB::raw('CAST(telegram_post_id AS UNSIGNED)'));
 
-                    if (! $latestId) {
-                        // If we have no posts at all, send a temporary message to get the current message_id
-                        try {
-                            $tempMsg = Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
-                                'chat_id' => $chatId,
-                                'text' => '.',
-                                'disable_notification' => true,
-                            ])->json();
+                    // 2. Probe the actual top message ID from Telegram
+                    $probedTopId = $this->probeTopMessageId($botToken);
 
-                            if (isset($tempMsg['result']['message_id'])) {
-                                $latestId = $tempMsg['result']['message_id'];
-                                // Delete the temp message
-                                Http::post("https://api.telegram.org/bot{$botToken}/deleteMessage", [
-                                    'chat_id' => $chatId,
-                                    'message_id' => $latestId,
-                                ]);
-                            }
-                        } catch (\Exception $e) {
-                            // Ignored
-                        }
-                    }
+                    $latestId = max($maxDbId, $probedTopId);
 
                     if ($latestId) {
-                        // Generate array of the last 50 message IDs
-                        $startId = max(1, $latestId - 49);
-                        $msgIds = range($startId, $latestId);
+                        // Refresh the last 200 messages in batches of 100 to keep
+                        // views / reactions / forwards up-to-date on older posts too.
+                        $batchSize = 100;
+                        $refreshFrom = max(1, $latestId - 199); // 200-post window
 
-                        $messagesResult = $MadelineProto->channels->getMessages([
-                            'channel' => $chatId,
-                            'id' => $msgIds,
-                        ]);
+                        for ($batchStart = $latestId; $batchStart >= $refreshFrom; $batchStart -= $batchSize) {
+                            $batchEnd = $batchStart;
+                            $batchBegin = max($refreshFrom, $batchStart - $batchSize + 1);
+                            $msgIds = range($batchBegin, $batchEnd);
 
-                        if (isset($messagesResult['messages'])) {
+                            $messagesResult = $MadelineProto->channels->getMessages([
+                                'channel' => $peer,
+                                'id' => $msgIds,
+                            ]);
+
+                            if (! isset($messagesResult['messages'])) {
+                                continue;
+                            }
+
+                            // Pre-fetch existing posts for this batch to avoid 200 individual DB queries
+                            $existingPosts = Post::where('channel_id', $this->channel->id)
+                                ->whereIn('telegram_post_id', array_map('strval', $msgIds))
+                                ->get()
+                                ->keyBy('telegram_post_id');
+
                             foreach ($messagesResult['messages'] as $msg) {
                                 if (($msg['_'] ?? '') !== 'message') {
                                     continue;
@@ -172,15 +171,17 @@ class SyncChannelStats implements ShouldQueue
                                     ? Carbon::createFromTimestamp($msg['date'])
                                     : now();
 
+                                $existing = $existingPosts->get((string) $msg['id']);
+
                                 Post::updateOrCreate(
                                     [
                                         'channel_id' => $this->channel->id,
                                         'telegram_post_id' => (string) $msg['id'],
                                     ],
                                     [
-                                        'text' => $text,
-                                        'caption' => DB::raw('COALESCE(caption, NULL)'),
-                                        'media_type' => $mediaType ? DB::raw("COALESCE(media_type, '{$mediaType}')") : DB::raw('media_type'),
+                                        'text' => $text ?? $existing?->text,
+                                        'caption' => $existing?->caption,
+                                        'media_type' => $mediaType ?? $existing?->media_type,
                                         'views' => $views,
                                         'forwards' => $forwards,
                                         'reactions' => $reactionsCount,
@@ -188,10 +189,13 @@ class SyncChannelStats implements ShouldQueue
                                     ]
                                 );
                             }
+
+                            // Brief pause to avoid Telegram API flood limits
+                            usleep(300_000); // 300ms
                         }
                     }
                     Log::channel('telegram')->info('MTProto sync successful', ['channel_id' => $this->channel->id]);
-                } catch (\Exception $mtprotoEx) {
+                } catch (\Throwable $mtprotoEx) {
                     Log::channel('telegram')->warning('MTProto sync failed, falling back to Bot API', [
                         'channel_id' => $this->channel->id,
                         'error' => $mtprotoEx->getMessage(),
@@ -318,5 +322,33 @@ class SyncChannelStats implements ShouldQueue
             + ($growthScore * 0.20);
 
         return (int) round($score);
+    }
+
+    private function probeTopMessageId(string $botToken): int
+    {
+        try {
+            $response = Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
+                'chat_id' => $this->channel->chat_id,
+                'text' => '.',
+                'disable_notification' => true,
+            ])->json();
+
+            if (! ($response['ok'] ?? false)) {
+                return 0;
+            }
+
+            $messageId = (int) ($response['result']['message_id'] ?? 0);
+
+            if ($messageId > 0) {
+                Http::post("https://api.telegram.org/bot{$botToken}/deleteMessage", [
+                    'chat_id' => $this->channel->chat_id,
+                    'message_id' => $messageId,
+                ]);
+            }
+
+            return $messageId;
+        } catch (\Throwable $e) {
+            return 0;
+        }
     }
 }

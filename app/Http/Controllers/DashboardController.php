@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\DashboardService;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -16,5 +17,10 @@ class DashboardController extends Controller
     public function calculateMetrics()
     {
         return $this->service->calculateMetrics();
+    }
+
+    public function getChannelMetrics(Request $request)
+    {
+        return $this->service->getChannelMetrics($request);
     }
 }

@@ -12,9 +12,9 @@ class DashboardService
     {
         $user = Auth::user();
 
-        $channelNetworkSize = Channel::where('user_id', $user->id)->count('member_count');
+        $channelNetworkSize = Channel::where('user_id', $user->id)->sum('member_count');
         $channelsCount = Channel::where('user_id', $user->id)->count();
-        $portfolieSize = Channel::where('user_id', $user->id)->sum('potential_score');
+        $portfolieSize = Channel::where('user_id', $user->id)->count();
         $averageEngagementRate = Channel::where('user_id', $user->id)->avg('engagement_rate');
 
         return response()->json(

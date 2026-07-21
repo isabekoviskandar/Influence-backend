@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BlogController;
+use App\Http\Controllers\Api\ChannelController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
@@ -49,6 +50,11 @@ Route::prefix('v1')->group(function () {
 
         Route::prefix('dashboard')->group(function () {
             Route::get('metrics', [DashboardController::class, 'calculateMetrics']);
+            Route::get('channels', [DashboardController::class, 'getChannelMetrics']);
+        });
+
+        Route::prefix('channels')->group(function () {
+            Route::get('get', [ChannelController::class, 'getUserChannels']);
         });
     });
 
