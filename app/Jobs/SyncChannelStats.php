@@ -126,6 +126,12 @@ class SyncChannelStats implements ShouldQueue
                                 continue;
                             }
 
+                            // Pre-fetch existing posts for this batch to avoid 200 individual DB queries
+                            $existingPosts = Post::where('channel_id', $this->channel->id)
+                                ->whereIn('telegram_post_id', array_map('strval', $msgIds))
+                                ->get()
+                                ->keyBy('telegram_post_id');
+
                             foreach ($messagesResult['messages'] as $msg) {
                                 if (($msg['_'] ?? '') !== 'message') {
                                     continue;
@@ -161,10 +167,7 @@ class SyncChannelStats implements ShouldQueue
                                     ? Carbon::createFromTimestamp($msg['date'])
                                     : now();
 
-                                // Find existing post to preserve caption/media_type if already set
-                                $existing = Post::where('channel_id', $this->channel->id)
-                                    ->where('telegram_post_id', (string) $msg['id'])
-                                    ->first();
+                                $existing = $existingPosts->get((string) $msg['id']);
 
                                 Post::updateOrCreate(
                                     [
@@ -172,8 +175,7 @@ class SyncChannelStats implements ShouldQueue
                                         'telegram_post_id' => (string) $msg['id'],
                                     ],
                                     [
-                                        'text' => $text,
-                                        // Preserve existing caption/media_type — don't overwrite with null
+                                        'text' => $text ?? $existing?->text,
                                         'caption' => $existing?->caption,
                                         'media_type' => $mediaType ?? $existing?->media_type,
                                         'views' => $views,
