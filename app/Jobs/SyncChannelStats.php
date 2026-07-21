@@ -13,6 +13,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Api;
@@ -95,32 +96,15 @@ class SyncChannelStats implements ShouldQueue
                     $pwrChat = $MadelineProto->getPwrChat($peer);
                     $memberCount = $pwrChat['participants_count'] ?? 0;
 
-                    // Workaround for BOT_METHOD_INVALID: Bots cannot use messages.getHistory.
-                    // Instead, we find the highest known message ID, or deduce it, and query those specific IDs backwards.
-                    $latestPost = Post::where('channel_id', $this->channel->id)->orderBy('telegram_post_id', 'desc')->first();
-                    $latestId = $latestPost ? (int) $latestPost->telegram_post_id : null;
+                    // Determine the highest message ID in this channel:
+                    // 1. Check max ID stored in database (numerically via CAST)
+                    $maxDbId = (int) Post::where('channel_id', $this->channel->id)
+                        ->max(DB::raw('CAST(telegram_post_id AS UNSIGNED)'));
 
-                    if (! $latestId) {
-                        // If we have no posts at all, send a temporary message to get the current message_id
-                        try {
-                            $tempMsg = Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
-                                'chat_id' => $chatId,
-                                'text' => '.',
-                                'disable_notification' => true,
-                            ])->json();
+                    // 2. Probe the actual top message ID from Telegram
+                    $probedTopId = $this->probeTopMessageId($botToken);
 
-                            if (isset($tempMsg['result']['message_id'])) {
-                                $latestId = $tempMsg['result']['message_id'];
-                                // Delete the temp message
-                                Http::post("https://api.telegram.org/bot{$botToken}/deleteMessage", [
-                                    'chat_id' => $chatId,
-                                    'message_id' => $latestId,
-                                ]);
-                            }
-                        } catch (\Exception $e) {
-                            // Ignored
-                        }
-                    }
+                    $latestId = max($maxDbId, $probedTopId);
 
                     if ($latestId) {
                         // Refresh the last 200 messages in batches of 100 to keep
@@ -332,5 +316,33 @@ class SyncChannelStats implements ShouldQueue
             + ($growthScore * 0.20);
 
         return (int) round($score);
+    }
+
+    private function probeTopMessageId(string $botToken): int
+    {
+        try {
+            $response = Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
+                'chat_id' => $this->channel->chat_id,
+                'text' => '.',
+                'disable_notification' => true,
+            ])->json();
+
+            if (! ($response['ok'] ?? false)) {
+                return 0;
+            }
+
+            $messageId = (int) ($response['result']['message_id'] ?? 0);
+
+            if ($messageId > 0) {
+                Http::post("https://api.telegram.org/bot{$botToken}/deleteMessage", [
+                    'chat_id' => $this->channel->chat_id,
+                    'message_id' => $messageId,
+                ]);
+            }
+
+            return $messageId;
+        } catch (\Throwable $e) {
+            return 0;
+        }
     }
 }
