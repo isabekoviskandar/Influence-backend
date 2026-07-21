@@ -13,7 +13,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Api;
@@ -69,25 +68,26 @@ class SyncChannelStats implements ShouldQueue
                     $MadelineProto = new \danog\MadelineProto\API($sessionDir.'/bot_session_sync.madeline', $settings);
                     $MadelineProto->botLogin($botToken);
 
-                    // Peer Discovery: Prioritize numeric ID for admins, fallback to username
-                    $intId = (int) $chatId;
+                    // Peer Discovery: prefer username (more reliable for bots), fallback to numeric ID
                     $usernamePeer = $this->channel->username ? '@'.$this->channel->username : null;
+                    $intId = (int) $chatId;
+                    $peer = null;
 
-                    try {
-                        // First try numeric ID - usually succeeds if bot is already admin
-                        $MadelineProto->getInfo($intId);
-                        $peer = $intId;
-                    } catch (\Exception $e) {
-                        if ($usernamePeer) {
-                            Log::channel('telegram')->info('ID resolution failed, trying username fallback', ['peer' => $usernamePeer]);
-                            try {
-                                $MadelineProto->getInfo($usernamePeer);
-                                $peer = $usernamePeer;
-                            } catch (\Exception $e2) {
-                                Log::channel('telegram')->warning('Peer resolution failed (both ID and username)', ['id' => $intId, 'username' => $usernamePeer]);
-                                throw $e2;
-                            }
-                        } else {
+                    if ($usernamePeer) {
+                        try {
+                            $MadelineProto->getInfo($usernamePeer);
+                            $peer = $usernamePeer;
+                        } catch (\Exception $e) {
+                            Log::channel('telegram')->info('Username peer resolve failed, trying numeric ID', ['peer' => $usernamePeer]);
+                        }
+                    }
+
+                    if ($peer === null) {
+                        try {
+                            $MadelineProto->getInfo($intId);
+                            $peer = $intId;
+                        } catch (\Exception $e) {
+                            Log::channel('telegram')->warning('Peer resolution failed (both username and ID)', ['id' => $intId, 'username' => $usernamePeer]);
                             throw $e;
                         }
                     }
@@ -123,16 +123,25 @@ class SyncChannelStats implements ShouldQueue
                     }
 
                     if ($latestId) {
-                        // Generate array of the last 50 message IDs
-                        $startId = max(1, $latestId - 49);
-                        $msgIds = range($startId, $latestId);
+                        // Refresh the last 200 messages in batches of 100 to keep
+                        // views / reactions / forwards up-to-date on older posts too.
+                        $batchSize = 100;
+                        $refreshFrom = max(1, $latestId - 199); // 200-post window
 
-                        $messagesResult = $MadelineProto->channels->getMessages([
-                            'channel' => $chatId,
-                            'id' => $msgIds,
-                        ]);
+                        for ($batchStart = $latestId; $batchStart >= $refreshFrom; $batchStart -= $batchSize) {
+                            $batchEnd = $batchStart;
+                            $batchBegin = max($refreshFrom, $batchStart - $batchSize + 1);
+                            $msgIds = range($batchBegin, $batchEnd);
 
-                        if (isset($messagesResult['messages'])) {
+                            $messagesResult = $MadelineProto->channels->getMessages([
+                                'channel' => $peer,
+                                'id' => $msgIds,
+                            ]);
+
+                            if (! isset($messagesResult['messages'])) {
+                                continue;
+                            }
+
                             foreach ($messagesResult['messages'] as $msg) {
                                 if (($msg['_'] ?? '') !== 'message') {
                                     continue;
@@ -168,6 +177,11 @@ class SyncChannelStats implements ShouldQueue
                                     ? Carbon::createFromTimestamp($msg['date'])
                                     : now();
 
+                                // Find existing post to preserve caption/media_type if already set
+                                $existing = Post::where('channel_id', $this->channel->id)
+                                    ->where('telegram_post_id', (string) $msg['id'])
+                                    ->first();
+
                                 Post::updateOrCreate(
                                     [
                                         'channel_id' => $this->channel->id,
@@ -175,8 +189,9 @@ class SyncChannelStats implements ShouldQueue
                                     ],
                                     [
                                         'text' => $text,
-                                        'caption' => DB::raw('COALESCE(caption, NULL)'),
-                                        'media_type' => $mediaType ? DB::raw("COALESCE(media_type, '{$mediaType}')") : DB::raw('media_type'),
+                                        // Preserve existing caption/media_type — don't overwrite with null
+                                        'caption' => $existing?->caption,
+                                        'media_type' => $mediaType ?? $existing?->media_type,
                                         'views' => $views,
                                         'forwards' => $forwards,
                                         'reactions' => $reactionsCount,
@@ -184,6 +199,9 @@ class SyncChannelStats implements ShouldQueue
                                     ]
                                 );
                             }
+
+                            // Brief pause to avoid Telegram API flood limits
+                            usleep(300_000); // 300ms
                         }
                     }
                     Log::channel('telegram')->info('MTProto sync successful', ['channel_id' => $this->channel->id]);
