@@ -77,8 +77,8 @@ class SyncChannelStats implements ShouldQueue
                         try {
                             $MadelineProto->getInfo($usernamePeer);
                             $peer = $usernamePeer;
-                        } catch (\Exception $e) {
-                            Log::channel('telegram')->info('Username peer resolve failed, trying numeric ID', ['peer' => $usernamePeer]);
+                        } catch (\Throwable $e) {
+                            Log::channel('telegram')->info('Username peer resolve failed, trying numeric ID', ['peer' => $usernamePeer, 'error' => $e->getMessage()]);
                         }
                     }
 
@@ -86,8 +86,8 @@ class SyncChannelStats implements ShouldQueue
                         try {
                             $MadelineProto->getInfo($intId);
                             $peer = $intId;
-                        } catch (\Exception $e) {
-                            Log::channel('telegram')->warning('Peer resolution failed (both username and ID)', ['id' => $intId, 'username' => $usernamePeer]);
+                        } catch (\Throwable $e) {
+                            Log::channel('telegram')->warning('Peer resolution failed (both username and ID)', ['id' => $intId, 'username' => $usernamePeer, 'error' => $e->getMessage()]);
                             throw $e;
                         }
                     }
@@ -205,7 +205,7 @@ class SyncChannelStats implements ShouldQueue
                         }
                     }
                     Log::channel('telegram')->info('MTProto sync successful', ['channel_id' => $this->channel->id]);
-                } catch (\Exception $mtprotoEx) {
+                } catch (\Throwable $mtprotoEx) {
                     Log::channel('telegram')->warning('MTProto sync failed, falling back to Bot API', [
                         'channel_id' => $this->channel->id,
                         'error' => $mtprotoEx->getMessage(),
